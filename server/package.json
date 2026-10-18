@@ -1,0 +1,26 @@
+{
+  "name": "placement-portal-server",
+  "version": "1.0.0",
+  "description": "Backend API and data migration service for Placement Preparation Website",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "import-data": "node scripts/import-placement-data.js",
+    "test": "node scripts/test-api.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "express-validator": "^7.2.1",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mammoth": "^1.9.0",
+    "mongoose": "^8.9.5",
+    "multer": "^2.4.0",
+    "pdf-parse": "^2.4.5"
+  }
+}
