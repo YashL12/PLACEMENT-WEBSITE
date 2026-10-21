@@ -129,11 +129,9 @@ export const AdminLoginPage = () => {
           </button>
         </form>
 
-        {/* Development Helper Credentials Hint */}
         <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-          <p className="text-[11px] text-slate-400 font-mono">
-            Default credentials: <br />
-            <span className="text-slate-600 font-semibold">admin@placementportal.edu</span> / <span className="text-slate-600 font-semibold">AdminPlacement@2026</span>
+          <p className="text-[11px] text-slate-400">
+            Contact the department T&amp;P coordinator if you have lost access.
           </p>
         </div>
       </div>

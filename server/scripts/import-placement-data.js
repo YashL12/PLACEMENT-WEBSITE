@@ -298,6 +298,33 @@ const COMPANY_DEFINITIONS = [
   },
 ];
 
+// Local logo asset mapping for known companies
+const COMPANY_LOGOS = {
+  'rkit software pvt ltd': '/logos/rkit.png',
+  'tatvasoft': '/logos/tatvasoft.png',
+  'tark technologies': '/logos/tark.png',
+  'improwised technologies': '/logos/improwised.png',
+  'gateway group': '/logos/gateway.png',
+  'vivansh infotech': '/logos/vivansh.png',
+  'shaligram infotech': '/logos/shaligram.png',
+  'koops technologies': '/logos/koops.png',
+  'inara consultancy services': '/logos/inara.png',
+  'esparkbiz': '/logos/esparkbiz.png',
+  'tss consultancy private limited': '/logos/tss.png',
+  'prominent pixel': '/logos/prominentpixel.png',
+  'cybercom creations': '/logos/cybercom.png',
+  'silver touch technologies': '/logos/silvertouch.png',
+  'techxperts': '/logos/techxperts.png',
+  'einfochips': '/logos/einfochips.png',
+  'sampaarsh technology': '/logos/sampaarsh.png',
+  'silent infotech': '/logos/silentinfotech.png',
+  'kevit technologies': '/logos/kevit.png',
+  'atri solutions': '/logos/atrisolutions.png',
+  'gn websoft': '/logos/gnwebsoft.png',
+  'version systems': '/logos/versionsystems.png',
+  'zeus learning': '/logos/zeuslearning.png',
+};
+
 // Helper to find or create canonical company
 async function getOrCreateCompany(nameCandidate, sourceDoc = '') {
   const trimmed = nameCandidate.trim();
@@ -310,12 +337,14 @@ async function getOrCreateCompany(nameCandidate, sourceDoc = '') {
       def.aliases.some((a) => a.toLowerCase() === lower)
     ) {
       let company = await Company.findOne({ name: def.canonicalName });
+      const logoUrl = COMPANY_LOGOS[def.canonicalName.toLowerCase()] || '';
       if (!company) {
         company = await Company.create({
           name: def.canonicalName,
           normalizedName: def.canonicalName.toLowerCase(),
           aliases: def.aliases,
           website: def.website,
+          logoUrl,
           about: def.about,
           generalAdvice: def.generalAdvice,
           needsReview: def.needsReview || false,
@@ -323,6 +352,9 @@ async function getOrCreateCompany(nameCandidate, sourceDoc = '') {
           isPublished: !def.needsReview, // Draft if needs review
         });
         console.log(`[COMPANY CREATED] ${company.name}`);
+      } else if (!company.logoUrl && logoUrl) {
+        company.logoUrl = logoUrl;
+        await company.save();
       }
       return company;
     }
@@ -334,10 +366,12 @@ async function getOrCreateCompany(nameCandidate, sourceDoc = '') {
   });
 
   if (!company) {
+    const logoUrl = COMPANY_LOGOS[lower] || '';
     company = await Company.create({
       name: trimmed,
       normalizedName: lower,
       aliases: [trimmed],
+      logoUrl,
       needsReview: true,
       reviewNotes: `Auto-created from document: ${sourceDoc}. Verify company details and aliases.`,
       isPublished: true,
@@ -354,7 +388,8 @@ async function runImport() {
   console.log('STARTING PLACEMENT PORTAL DATA IMPORT & MIGRATION');
   console.log('====================================================');
 
-  await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/placement_portal');
+  const connectDB = require('../src/config/db');
+  await connectDB();
   console.log('Connected to MongoDB successfully.');
 
   // Create default admin user if not exists
@@ -372,14 +407,29 @@ async function runImport() {
     console.log(`[ADMIN EXISTS] Found existing admin account: ${admin.email}`);
   }
 
-  // Clean existing migration records for idempotent re-import
-  console.log('Cleaning previous placement records for clean import...');
-  await Question.deleteMany({});
-  await InterviewRound.deleteMany({});
-  await InterviewExperience.deleteMany({});
-  await Company.deleteMany({});
-  await ImportReport.deleteMany({});
-  console.log('Previous records cleared.');
+  // Check if companies already exist
+  const existingCompanyCount = await Company.countDocuments();
+  if (existingCompanyCount > 0) {
+    console.log(`Preserving ${existingCompanyCount} existing company records in database without dropping.`);
+    // Ensure all existing companies have their official local logoUrl populated
+    for (const [canonical, logo] of Object.entries(COMPANY_LOGOS)) {
+      await Company.updateMany(
+        {
+          normalizedName: canonical,
+          $or: [{ logoUrl: '' }, { logoUrl: { $exists: false } }],
+        },
+        { $set: { logoUrl: logo } }
+      );
+    }
+  } else {
+    // Only clean and run full import if database is empty
+    console.log('Database is empty. Populating from source documents...');
+    await Question.deleteMany({});
+    await InterviewRound.deleteMany({});
+    await InterviewExperience.deleteMany({});
+    await Company.deleteMany({});
+    await ImportReport.deleteMany({});
+  }
 
   const report = {
     sourceFiles: [
@@ -427,23 +477,82 @@ async function runImport() {
   }
 
   // Compile final numbers
-  report.companiesCount = await Company.countDocuments();
-  report.experiencesCount = await InterviewExperience.countDocuments();
-  report.roundsCount = await InterviewRound.countDocuments();
-  report.questionsCount = await Question.countDocuments();
+  // Seed initial Alumni if empty (with Kevit featured #1 and clean profile photo field)
+  const Alumni = require('../src/models/Alumni');
+  const existingAlumni = await Alumni.countDocuments();
+  if (existingAlumni === 0) {
+    console.log('Seeding initial verified alumni records...');
+    await Alumni.create([
+      {
+        name: 'GECR Computer Alum (Kevit)',
+        companyName: 'Kevit Technologies',
+        jobTitle: 'Conversational AI Engineer',
+        linkedinUrl: 'https://www.linkedin.com/school/gecrajkot/',
+        companyLogo: '/logos/kevit.png',
+        profilePhoto: '', // Uses clean neutral avatar placeholder
+        isFeatured: true,
+        featuredOrder: 1,
+        isPublished: true,
+      },
+      {
+        name: 'GECR Computer Alum (TSS)',
+        companyName: 'TSS Consultancy Private Limited',
+        jobTitle: 'FinTech Software Engineer',
+        linkedinUrl: 'https://www.linkedin.com/school/gecrajkot/',
+        companyLogo: '/logos/tss.png',
+        profilePhoto: '',
+        isFeatured: false,
+        featuredOrder: 2,
+        isPublished: true,
+      },
+      {
+        name: 'GECR Computer Alum (RKIT)',
+        companyName: 'RKIT Software Pvt Ltd',
+        jobTitle: 'Full Stack Developer',
+        linkedinUrl: 'https://www.linkedin.com/school/gecrajkot/',
+        companyLogo: '/logos/rkit.png',
+        profilePhoto: '',
+        isFeatured: false,
+        featuredOrder: 3,
+        isPublished: true,
+      },
+      {
+        name: 'GECR Computer Alum (GN Websoft)',
+        companyName: 'GN Websoft',
+        jobTitle: 'Frontend & UI Developer',
+        linkedinUrl: 'https://www.linkedin.com/school/gecrajkot/',
+        companyLogo: '/logos/gnwebsoft.png',
+        profilePhoto: '',
+        isFeatured: false,
+        featuredOrder: 4,
+        isPublished: true,
+      },
+      {
+        name: 'GECR Computer Alum (TatvaSoft)',
+        companyName: 'TatvaSoft',
+        jobTitle: 'Software Developer',
+        linkedinUrl: 'https://www.linkedin.com/school/gecrajkot/',
+        companyLogo: '/logos/tatvasoft.png',
+        profilePhoto: '',
+        isFeatured: false,
+        featuredOrder: 5,
+        isPublished: true,
+      },
+    ]);
+    console.log('Alumni seeded.');
+  }
 
-  const savedReport = await ImportReport.create(report);
-
-  console.log('====================================================');
-  console.log('IMPORT COMPLETE! SUMMARY REPORT:');
-  console.log(`- Companies in DB:       ${report.companiesCount}`);
-  console.log(`- Experiences in DB:     ${report.experiencesCount}`);
-  console.log(`- Interview Rounds:      ${report.roundsCount}`);
-  console.log(`- Questions in DB:       ${report.questionsCount}`);
-  console.log(`- Flagged for Review:    ${report.flaggedRecords.length}`);
-  console.log(`- Duplicates Detected:   ${report.duplicatesDetected.length}`);
-  console.log(`- Errors Encountered:    ${report.errorLog.length}`);
-  console.log('====================================================');
+  // Seed curated learning materials if empty
+  const LearningMaterial = require('../src/models/LearningMaterial');
+  const existingMaterials = await LearningMaterial.countDocuments();
+  if (existingMaterials === 0) {
+    console.log('Seeding initial curated learning materials...');
+    const { syncNotesData } = require('./drive-notes-data');
+    if (syncNotesData && syncNotesData.length > 0) {
+      await LearningMaterial.create(syncNotesData);
+      console.log(`Seeded ${syncNotesData.length} curated placement notes from Google Drive.`);
+    }
+  }
 
   await mongoose.disconnect();
   console.log('Disconnected from MongoDB.');

@@ -37,7 +37,7 @@ const ProtectedRoute = ({ children }) => {
 export const App = () => {
   return (
     <AuthProvider>
-      <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans">
+      <div className="flex flex-col min-h-screen text-slate-900" style={{ background: 'var(--bg-page)' }}>
         <Navbar />
         <main className="flex-1">
           <Routes>

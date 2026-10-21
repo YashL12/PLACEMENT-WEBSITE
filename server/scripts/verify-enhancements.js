@@ -34,7 +34,8 @@ async function runVerification() {
   console.log('STARTING GECR PLACEMENT SARTHI COMPREHENSIVE VERIFICATION');
   console.log('====================================================');
 
-  await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/placement_portal');
+  const connectDB = require('../src/config/db');
+  await connectDB();
 
   // 1. Verify Database Data Preservation
   const companyCount = await Company.countDocuments();
@@ -110,7 +111,7 @@ async function runVerification() {
     .sort({ isFeatured: -1, featuredOrder: 1, name: 1 })
     .lean();
 
-  assert(sortedAlumni[0].name === 'Kevit Test Alum', `Featured ranking: Kevit appears first (rank 1: ${sortedAlumni[0].name})`);
+  assert(sortedAlumni[0].companyName === 'Kevit Technologies', `Featured ranking: Kevit appears first (rank 1 company: ${sortedAlumni[0].companyName})`);
 
   // Test search: searching for Priya should NOT return Kevit
   const priyaSearch = await Alumni.find({

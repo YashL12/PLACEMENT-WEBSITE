@@ -1,0 +1,77 @@
+# Dependencies
+node_modules/
+server/node_modules/
+client/node_modules/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.env
+server/.env
+client/.env
+
+# Private Excel reports and exports
+*.xlsx
+*.xls
+*.csv
+reports/
+output/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Frontend and backend build output
+dist/
+dist-ssr/
+build/
+coverage/
+
+# Caches
+.cache/
+.parcel-cache/
+.eslintcache
+.vite/
+
+# Local files
+*.local
+*.tmp
+
+# TypeScript generated files
+*.tsbuildinfo
+
+# Editor settings
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local databases and backups
+*.sqlite
+*.sqlite3
+*.db
+*.bak
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Deployment metadata
+.vercel/
+.netlify/
+
+# Server dynamic uploads (preserve folder, ignore uploaded user content)
+server/uploads/*
+!server/uploads/.gitkeep

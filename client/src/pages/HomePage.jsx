@@ -4,32 +4,71 @@ import {
   Search,
   Building2,
   BookOpen,
-  Users,
   ArrowRight,
-  Award,
-  Layers,
-  FileText,
-  ExternalLink,
+  HelpCircle,
   GraduationCap,
-  ShieldCheck,
-  CheckCircle,
+  TrendingUp,
+  Users,
+  Zap,
+  ChevronRight,
+  Star,
+  FileText,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { CompanyCard } from '../components/CompanyCard';
-import { CompanyLogo } from '../components/CompanyLogo';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+
+// Quick company chips
+const PRIORITY_COMPANIES = ['Kevit', 'TSS', 'RKIT', 'GN Websoft', 'TatvaSoft', 'eSparkBiz', 'Prominent Pixel', 'Gateway'];
+
+// Feature pillars
+const PILLARS = [
+  {
+    icon: Building2,
+    label: 'Company Directory',
+    description: 'Priority-ordered recruiting companies with complete interview timelines, selection criteria, and round-by-round breakdowns.',
+    href: '/companies',
+    cta: 'Browse Companies',
+    color: 'blue',
+    bg: 'bg-blue-50',
+    iconColor: 'text-blue-600',
+    hoverBg: 'hover:bg-blue-600',
+    border: 'hover:border-blue-300',
+  },
+  {
+    icon: HelpCircle,
+    label: 'Interview Questions',
+    description: 'Over 1,400+ real coding problems, technical MCQs, algorithmic challenges, and HR round questions reported by GECR students.',
+    href: '/companies',
+    cta: 'Explore Questions',
+    color: 'violet',
+    bg: 'bg-violet-50',
+    iconColor: 'text-violet-600',
+    hoverBg: 'hover:bg-violet-600',
+    border: 'hover:border-violet-300',
+  },
+  {
+    icon: BookOpen,
+    label: 'Study Resources',
+    description: 'Curated DSA cheatsheets, OS & DBMS guides, aptitude prep sheets, and company-specific archives from faculty and alumni.',
+    href: '/learning-material',
+    cta: 'View Resources',
+    color: 'emerald',
+    bg: 'bg-emerald-50',
+    iconColor: 'text-emerald-600',
+    hoverBg: 'hover:bg-emerald-600',
+    border: 'hover:border-emerald-300',
+  },
+];
 
 export const HomePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [featuredCompanies, setFeaturedCompanies] = useState([]);
-  const [learningMaterials, setLearningMaterials] = useState([]);
-  const [featuredAlumni, setFeaturedAlumni] = useState([]);
   const [stats, setStats] = useState({
-    companiesCount: 0,
-    experiencesCount: 0,
-    questionsCount: 713,
-    learningMaterialsCount: 0,
-    alumniCount: 0,
+    companiesCount: 26,
+    experiencesCount: 76,
+    questionsCount: 1426,
+    learningMaterialsCount: 3,
   });
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -38,46 +77,24 @@ export const HomePage = () => {
     const loadHomeData = async () => {
       try {
         setLoading(true);
-
-        // Parallel fetch of actual database records
-        const [compRes, matRes, alumRes] = await Promise.all([
-          api.getCompanies({ limit: 6, sort: 'experiences' }).catch(() => ({ success: false })),
+        const [statsRes, compRes, matRes] = await Promise.all([
+          api.getPublicStats().catch(() => ({ success: false })),
+          api.getCompanies({ limit: 6 }).catch(() => ({ success: false })),
           api.getLearningMaterials({ limit: 3 }).catch(() => ({ success: false })),
-          api.getAlumni({ limit: 3 }).catch(() => ({ success: false })),
         ]);
 
-        let totalComps = 0;
-        let totalExps = 0;
+        if (statsRes.success && statsRes.data) {
+          setStats({
+            companiesCount: statsRes.data.companiesCount || 26,
+            experiencesCount: statsRes.data.experiencesCount || 76,
+            questionsCount: statsRes.data.questionsCount || 1426,
+            learningMaterialsCount: matRes.data?.pagination?.total || 3,
+          });
+        }
 
         if (compRes.success && compRes.data?.companies) {
           setFeaturedCompanies(compRes.data.companies);
-          totalComps = compRes.data.pagination?.total || compRes.data.companies.length;
         }
-
-        if (matRes.success && matRes.data?.materials) {
-          setLearningMaterials(matRes.data.materials);
-        }
-
-        if (alumRes.success && alumRes.data?.alumni) {
-          setFeaturedAlumni(alumRes.data.alumni);
-        }
-
-        // Fetch full companies list to compute actual experiences count
-        const allCompsRes = await api.getCompanies({ limit: 100 }).catch(() => ({ success: false }));
-        if (allCompsRes.success && allCompsRes.data?.companies) {
-          totalExps = allCompsRes.data.companies.reduce(
-            (acc, c) => acc + (c.totalExperiencesCount || 0),
-            0
-          );
-        }
-
-        setStats({
-          companiesCount: totalComps || (allCompsRes.data?.companies?.length || 26),
-          experiencesCount: totalExps || 38,
-          questionsCount: 713,
-          learningMaterialsCount: matRes.data?.pagination?.total || 0,
-          alumniCount: alumRes.data?.pagination?.total || 0,
-        });
       } catch (error) {
         console.error('Error loading homepage data:', error);
       } finally {
@@ -97,340 +114,277 @@ export const HomePage = () => {
     }
   };
 
+  const statItems = [
+    { value: stats.companiesCount, label: 'Recruiting Companies', icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { value: stats.experiencesCount, label: 'Interview Experiences', icon: FileText, color: 'text-violet-600', bg: 'bg-violet-50' },
+    { value: `${stats.questionsCount}+`, label: 'Interview Questions', icon: HelpCircle, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { value: stats.learningMaterialsCount, label: 'Study Resources', icon: BookOpen, color: 'text-amber-600', bg: 'bg-amber-50' },
+  ];
+
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-white pt-14 pb-20 px-4 sm:px-6 lg:px-8 border-b border-slate-800">
-        <div className="absolute inset-0 bg-[radial-gradient(#2563eb_1px,transparent_1px)] [background-size:24px_24px] opacity-10"></div>
+    <div className="min-h-screen" style={{ background: 'var(--bg-page)' }}>
+
+      {/* ─── Hero Section ─── */}
+      <section
+        className="relative overflow-hidden pt-12 pb-16 px-4 sm:px-6 lg:px-8"
+        style={{ background: 'linear-gradient(160deg, #eff6ff 0%, #f8fafc 50%, #ffffff 100%)' }}
+        aria-label="Hero section"
+      >
+        {/* Subtle background decoration */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+          <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl" />
+          <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-indigo-100/30 rounded-full blur-3xl" />
+        </div>
+
         <div className="relative max-w-4xl mx-auto text-center">
-          {/* Institutional Badge */}
-          <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-300 text-xs font-semibold mb-6">
-            <img src="/gecr-logo.png" alt="GECR" className="w-4 h-4 object-contain" />
-            <span>Government Engineering College, Rajkot • Training & Placement Cell</span>
+          {/* Eyebrow badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-blue-200 text-blue-700 text-xs font-semibold mb-7 shadow-sm">
+            <img src="/gecr-logo.png" alt="GECR" className="w-4 h-4 object-contain" aria-hidden="true" />
+            <span>GEC Rajkot · Computer Department</span>
+            <span className="w-1 h-1 rounded-full bg-blue-400" aria-hidden="true" />
+            <span className="text-blue-500">Placement Portal</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-5 leading-tight">
-            GECR <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-sky-300">Placement Sarthi</span>
+          {/* Main headline */}
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 mb-5 leading-tight tracking-tight">
+            Ace Your Placement{' '}
+            <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #1d4ed8, #3b82f6)' }}>
+              with Real Insights
+            </span>
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto mb-9 leading-relaxed font-normal">
-            A comprehensive placement preparation portal providing authentic student interview experiences, technical coding problems, recruitment rounds, learning materials, and alumni connections.
+          <p className="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed">
+            Explore verified interview experiences, authentic question banks, company-wise selection
+            processes, and curated study materials — all gathered from GECR students.
           </p>
 
-          {/* Prominent Company Search Bar */}
+          {/* Search Bar */}
           <form
             onSubmit={handleSearchSubmit}
-            className="max-w-2xl mx-auto relative flex items-center bg-white rounded-2xl p-2 shadow-2xl border border-slate-700/50"
+            className="max-w-2xl mx-auto"
+            role="search"
+            aria-label="Search companies"
           >
-            <div className="pl-3.5 text-slate-400 flex items-center pointer-events-none">
-              <Search className="w-5 h-5 text-slate-400" />
+            <div className="flex items-center bg-white rounded-2xl shadow-md border border-slate-200 focus-within:border-blue-400 focus-within:shadow-lg focus-within:shadow-blue-100 transition-all duration-200 p-1.5">
+              <div className="pl-3 text-slate-400 flex items-center pointer-events-none flex-shrink-0" aria-hidden="true">
+                <Search className="w-5 h-5" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search companies — Kevit, TSS, RKIT, TatvaSoft..."
+                className="flex-1 px-3 py-2.5 text-slate-900 placeholder-slate-400 text-sm bg-transparent focus:outline-none"
+                aria-label="Search companies by name"
+              />
+              <button
+                type="submit"
+                className="flex-shrink-0 px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all duration-150 flex items-center gap-2 cursor-pointer"
+                style={{ background: 'linear-gradient(135deg, #1e40af, #2563eb)' }}
+              >
+                <span className="hidden sm:inline">Search</span>
+                <ArrowRight className="w-4 h-4" aria-hidden="true" />
+              </button>
             </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search companies (e.g. TSS, RKIT, Tark, TatvaSoft, eSparkBiz, Kevit)..."
-              className="w-full px-3.5 py-3 text-slate-900 placeholder-slate-400 text-sm sm:text-base bg-transparent focus:outline-none"
-            />
-            <button
-              type="submit"
-              className="flex-shrink-0 bg-blue-700 hover:bg-blue-800 text-white px-5 sm:px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-150 flex items-center gap-2 shadow-sm"
-            >
-              <span>Search</span>
-              <ArrowRight className="w-4 h-4 hidden sm:inline" />
-            </button>
           </form>
 
-          {/* Popular Search Shortcuts */}
-          <div className="flex items-center justify-center gap-2 flex-wrap mt-5 text-xs text-slate-400">
-            <span className="text-slate-400">Popular:</span>
-            {['TSS', 'RKIT', 'TatvaSoft', 'Tark', 'eSparkBiz', 'Prominent Pixel', 'Gateway', 'Kevit'].map(
-              (name) => (
-                <button
-                  key={name}
-                  onClick={() => navigate(`/companies?search=${encodeURIComponent(name)}`)}
-                  className="px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/20 text-slate-200 transition-colors"
+          {/* Quick company chips */}
+          <div className="flex items-center justify-center gap-2 flex-wrap mt-5" aria-label="Popular companies">
+            <span className="text-xs text-slate-400 font-medium">Priority:</span>
+            {PRIORITY_COMPANIES.map((name) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => navigate(`/companies?search=${encodeURIComponent(name)}`)}
+                className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 text-slate-600 text-xs font-medium transition-all duration-100 shadow-xs cursor-pointer"
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Stats Row */}
+        <div className="relative max-w-4xl mx-auto mt-14">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            {statItems.map((stat, i) => {
+              const Icon = stat.icon;
+              return (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 text-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
                 >
-                  {name}
-                </button>
-              )
-            )}
-          </div>
-        </div>
-
-        {/* Database Metric Stats (Accurately calculated from actual database records) */}
-        <div className="relative max-w-5xl mx-auto mt-14 pt-8 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-          <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-            <span className="text-2xl sm:text-3xl font-extrabold text-blue-400 block mb-1">
-              {stats.companiesCount}
-            </span>
-            <span className="text-xs text-slate-400 font-medium">Recruiting Companies</span>
-          </div>
-
-          <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-            <span className="text-2xl sm:text-3xl font-extrabold text-sky-400 block mb-1">
-              {stats.experiencesCount}
-            </span>
-            <span className="text-xs text-slate-400 font-medium">Verified Experiences</span>
-          </div>
-
-          <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-            <span className="text-2xl sm:text-3xl font-extrabold text-emerald-400 block mb-1">
-              {stats.questionsCount}
-            </span>
-            <span className="text-xs text-slate-400 font-medium">Interview Questions</span>
-          </div>
-
-          <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-            <span className="text-2xl sm:text-3xl font-extrabold text-indigo-400 block mb-1">
-              {stats.learningMaterialsCount > 0 ? stats.learningMaterialsCount : 'Curated'}
-            </span>
-            <span className="text-xs text-slate-400 font-medium">Study Resources</span>
+                  <div className={`w-9 h-9 ${stat.bg} rounded-xl flex items-center justify-center mx-auto mb-3`}>
+                    <Icon className={`w-4.5 h-4.5 ${stat.color}`} aria-hidden="true" />
+                  </div>
+                  <div className={`text-2xl sm:text-3xl font-extrabold ${stat.color} leading-none mb-1`}>
+                    {stat.value}
+                  </div>
+                  <div className="text-xs text-slate-500 font-medium leading-tight">{stat.label}</div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* Main 3 Platform Pillars */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link
-            to="/companies"
-            className="p-6 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 shadow-2xs hover:shadow-md transition-all group"
-          >
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center mb-4 group-hover:bg-blue-700 group-hover:text-white transition-colors">
-              <Building2 className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-bold text-slate-900 mb-2 group-hover:text-blue-700 transition-colors">
-              1. Company Placement Experiences
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed mb-4">
-              Detailed multi-round interview breakdowns, programming problem statements, and real selection tips from candidates across recruitment seasons.
-            </p>
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700">
-              <span>Browse Companies</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </span>
-          </Link>
+      {/* ─── Platform Pillars ─── */}
+      <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto" aria-label="Platform features">
+        {/* Section header */}
+        <div className="text-center mb-10">
+          <div className="section-eyebrow mx-auto mb-4">
+            <Zap className="w-3 h-3" aria-hidden="true" />
+            What's Inside
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Everything you need to crack placements
+          </h2>
+          <p className="text-sm text-slate-500 mt-3 max-w-xl mx-auto">
+            Three powerful resources built from real GECR student experiences to help you prepare smarter.
+          </p>
+        </div>
 
-          <Link
-            to="/learning-material"
-            className="p-6 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 shadow-2xs hover:shadow-md transition-all group"
-          >
-            <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center mb-4 group-hover:bg-indigo-700 group-hover:text-white transition-colors">
-              <BookOpen className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-bold text-slate-900 mb-2 group-hover:text-indigo-700 transition-colors">
-              2. Learning Material & Archives
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed mb-4">
-              Download verified study resources, core computer science notes, aptitude problem sheets, and company-targeted preparation guides.
-            </p>
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700">
-              <span>Explore Materials</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </span>
-          </Link>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {PILLARS.map((pillar, idx) => {
+            const Icon = pillar.icon;
+            return (
+              <Link
+                key={idx}
+                to={pillar.href}
+                className="group relative bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-250 overflow-hidden"
+                style={{ '--hover-color': pillar.color }}
+              >
+                {/* Hover gradient overlay */}
+                <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-250 rounded-2xl`}
+                  style={{ background: `linear-gradient(135deg, ${pillar.color === 'blue' ? '#eff6ff' : pillar.color === 'violet' ? '#f5f3ff' : '#f0fdf4'} 0%, transparent 60%)` }}
+                  aria-hidden="true"
+                />
 
-          <Link
-            to="/alumni"
-            className="p-6 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 shadow-2xs hover:shadow-md transition-all group"
-          >
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-4 group-hover:bg-emerald-700 group-hover:text-white transition-colors">
-              <Users className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-bold text-slate-900 mb-2 group-hover:text-emerald-700 transition-colors">
-              3. Alumni Directory
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed mb-4">
-              Discover engineering alumni working at leading technology companies and directly connect through their professional LinkedIn profiles.
-            </p>
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
-              <span>View Alumni Network</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </span>
-          </Link>
+                <div className="relative">
+                  {/* Icon */}
+                  <div className={`w-12 h-12 ${pillar.bg} rounded-xl flex items-center justify-center mb-5 transition-colors duration-200 group-hover:scale-110 transform`}>
+                    <Icon className={`w-6 h-6 ${pillar.iconColor}`} aria-hidden="true" />
+                  </div>
+
+                  <h3 className="text-base font-bold text-slate-900 mb-2 group-hover:text-blue-700 transition-colors">
+                    {pillar.label}
+                  </h3>
+                  <p className="text-sm text-slate-500 leading-relaxed mb-5">
+                    {pillar.description}
+                  </p>
+
+                  <span className={`inline-flex items-center gap-1 text-xs font-semibold ${pillar.iconColor} transition-all`}>
+                    <span>{pillar.cta}</span>
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
-      {/* Primary Feature: Company Placement Experiences */}
-      <section className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 pb-4 border-b border-slate-200 gap-4">
+      {/* ─── Featured Companies ─── */}
+      <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto" aria-label="Featured companies">
+        {/* Section header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              Company Placement Experiences
+            <div className="section-eyebrow mb-3">
+              <Star className="w-3 h-3 fill-blue-600" aria-hidden="true" />
+              Priority Companies
+            </div>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+              Recruiting Companies &amp; Processes
             </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Recruitment processes with verified interview rounds, coding problems, and candidate advice.
+            <p className="text-sm text-slate-500 mt-1.5">
+              Real multi-round interview breakdowns, selection criteria, and candidate tips.
             </p>
           </div>
-
           <Link
             to="/companies"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-blue-700 hover:text-blue-900 transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors flex-shrink-0"
           >
-            <span>View All Companies ({stats.companiesCount})</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>View All ({stats.companiesCount})</span>
+            <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </Link>
         </div>
 
+        {/* Company cards */}
         {loading ? (
-          <LoadingSpinner message="Loading placement records..." />
+          <LoadingSpinner message="Loading companies from database..." />
         ) : featuredCompanies.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {featuredCompanies.map((company) => (
               <CompanyCard key={company._id} company={company} />
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 text-slate-500 text-sm">
-            No companies loaded yet.
+          <div className="text-center py-14 bg-white rounded-2xl border border-slate-200 text-slate-400 text-sm">
+            No companies found in database.
           </div>
         )}
-      </section>
 
-      {/* Secondary Feature: Placement Learning Material Highlights */}
-      <section className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto bg-slate-50/70 rounded-3xl border border-slate-200/80 mb-12">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 pb-4 border-b border-slate-200 gap-4">
-          <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 mb-1">
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Study Resources</span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              Learning Material & Study Archives
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Access high-yield preparation sheets, aptitude guides, and core engineering resources.
-            </p>
-          </div>
-
-          <Link
-            to="/learning-material"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-700 hover:text-indigo-900 transition-colors"
-          >
-            <span>Browse All Materials</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        {learningMaterials.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {learningMaterials.map((item) => (
-              <div
-                key={item._id}
-                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs flex flex-col justify-between"
-              >
-                <div>
-                  <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 uppercase">
-                    {item.category}
-                  </span>
-                  <h3 className="text-sm font-bold text-slate-900 mt-2 line-clamp-1">
-                    {item.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                    {item.description || 'Verified placement study resource.'}
-                  </p>
-                </div>
-                <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <span className="text-slate-400 font-mono text-[11px] uppercase">{item.fileType}</span>
-                  <Link
-                    to="/learning-material"
-                    className="font-semibold text-indigo-700 hover:text-indigo-900"
-                  >
-                    View Resource →
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center max-w-lg mx-auto">
-            <BookOpen className="w-10 h-10 text-indigo-400 mx-auto mb-3" />
-            <h3 className="text-sm font-bold text-slate-900 mb-1">
-              Learning Materials Repository
-            </h3>
-            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-              Curated preparation guides and study sheets for technical and aptitude rounds are uploaded by college administrators.
-            </p>
+        {/* Browse all CTA */}
+        {!loading && featuredCompanies.length > 0 && (
+          <div className="mt-8 text-center">
             <Link
-              to="/learning-material"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-700 text-white text-xs font-semibold hover:bg-indigo-800 transition-colors"
+              to="/companies"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors shadow-sm"
             >
-              <span>Explore Learning Material</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <span>View All {stats.companiesCount} Companies</span>
+              <ChevronRight className="w-4 h-4" aria-hidden="true" />
             </Link>
           </div>
         )}
       </section>
 
-      {/* Tertiary Feature: Alumni Network Spotlight */}
-      <section className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mb-16">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 pb-4 border-b border-slate-200 gap-4">
-          <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 mb-1">
-              <Users className="w-3.5 h-3.5" />
-              <span>Graduate Directory</span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              GECR Alumni Directory
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Discover college graduates currently working across the industry and connect for placement guidance.
-            </p>
-          </div>
-
+      {/* ─── Quick Links / Alumni CTA ─── */}
+      <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mb-8" aria-label="Additional resources">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {/* Alumni Card */}
           <Link
             to="/alumni"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-900 transition-colors"
+            className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg hover:border-violet-200 transition-all duration-200 flex items-start gap-4"
           >
-            <span>Explore All Alumni</span>
-            <ArrowRight className="w-4 h-4" />
+            <div className="w-12 h-12 bg-violet-50 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-violet-100 transition-colors">
+              <Users className="w-6 h-6 text-violet-600" aria-hidden="true" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 mb-1.5 group-hover:text-violet-700 transition-colors">
+                Alumni Network
+              </h3>
+              <p className="text-sm text-slate-500 mb-3 leading-relaxed">
+                Connect with GECR Computer Department graduates at top companies for mentorship and guidance.
+              </p>
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-violet-600">
+                <span>Browse Alumni</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+              </span>
+            </div>
+          </Link>
+
+          {/* Study Resources Card */}
+          <Link
+            to="/learning-material"
+            className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg hover:border-emerald-200 transition-all duration-200 flex items-start gap-4"
+          >
+            <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 transition-colors">
+              <TrendingUp className="w-6 h-6 text-emerald-600" aria-hidden="true" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 mb-1.5 group-hover:text-emerald-700 transition-colors">
+                Preparation Resources
+              </h3>
+              <p className="text-sm text-slate-500 mb-3 leading-relaxed">
+                Download DSA sheets, aptitude guides, OS/DBMS notes, and SQL prep sets curated for placements.
+              </p>
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
+                <span>View Resources</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+              </span>
+            </div>
           </Link>
         </div>
-
-        {featuredAlumni.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {featuredAlumni.map((alum) => (
-              <div
-                key={alum._id}
-                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs flex items-center justify-between gap-3"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <CompanyLogo src={alum.companyLogo} name={alum.companyName} size="md" />
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-slate-900 line-clamp-1">{alum.name}</h3>
-                    <p className="text-xs text-slate-500 line-clamp-1">{alum.companyName}</p>
-                  </div>
-                </div>
-                <a
-                  href={alum.linkedinUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-2.5 py-1.5 bg-[#0a66c2] text-white rounded-lg text-xs font-semibold flex-shrink-0"
-                >
-                  LinkedIn
-                </a>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center max-w-lg mx-auto">
-            <Users className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
-            <h3 className="text-sm font-bold text-slate-900 mb-1">
-              GECR Alumni Network
-            </h3>
-            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-              Explore profiles of GECR graduates working across leading engineering organizations.
-            </p>
-            <Link
-              to="/alumni"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 transition-colors"
-            >
-              <span>View Alumni Directory</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        )}
       </section>
     </div>
   );

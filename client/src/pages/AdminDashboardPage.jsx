@@ -34,6 +34,7 @@ import { api } from '../services/api';
 import { Badge } from '../components/Badge';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CompanyLogo } from '../components/CompanyLogo';
+import { AlumniAvatar } from '../components/AlumniAvatar';
 
 const MATERIAL_CATEGORIES = [
   'DSA & Problem Solving',
@@ -80,6 +81,7 @@ export const AdminDashboardPage = () => {
     linkedinUrl: '',
     jobTitle: '',
     companyLogo: '',
+    profilePhoto: '',
     isFeatured: false,
     isPublished: true,
   });
@@ -289,6 +291,7 @@ export const AdminDashboardPage = () => {
         linkedinUrl: alum.linkedinUrl || '',
         jobTitle: alum.jobTitle || '',
         companyLogo: alum.companyLogo || '',
+        profilePhoto: alum.profilePhoto || '',
         isFeatured: alum.isFeatured || false,
         isPublished: alum.isPublished ?? true,
       });
@@ -300,6 +303,7 @@ export const AdminDashboardPage = () => {
         linkedinUrl: '',
         jobTitle: '',
         companyLogo: '',
+        profilePhoto: '',
         isFeatured: false,
         isPublished: true,
       });
@@ -879,7 +883,8 @@ export const AdminDashboardPage = () => {
                 {filteredAlumni.map((a) => (
                   <tr key={a._id} className={`hover:bg-slate-50/70 transition-colors ${a.isFeatured ? 'bg-blue-50/30' : ''}`}>
                     <td className="py-3 px-4 font-bold text-slate-900">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <AlumniAvatar src={a.profilePhoto} name={a.name} size="sm" />
                         <span>{a.name}</span>
                         {a.isFeatured && (
                           <span className="inline-flex items-center gap-0.5 px-2 py-0.2 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold">
@@ -1400,6 +1405,25 @@ export const AdminDashboardPage = () => {
                   placeholder="https://www.linkedin.com/in/username"
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono text-xs"
                 />
+              </div>
+
+              <div>
+                <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  Alumnus Profile Photo URL (Optional)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={alumniForm.profilePhoto}
+                    onChange={(e) => setAlumniForm({ ...alumniForm, profilePhoto: e.target.value })}
+                    placeholder="e.g. /uploads/alumni/photo.jpg or verified image URL"
+                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono text-xs"
+                  />
+                  <AlumniAvatar src={alumniForm.profilePhoto} name={alumniForm.name || 'Alumnus'} size="sm" />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Must be an approved personal photo. If omitted, a clean neutral avatar placeholder is used. Never use a company logo.
+                </p>
               </div>
 
               <div>

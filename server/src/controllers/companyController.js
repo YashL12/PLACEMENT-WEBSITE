@@ -39,30 +39,82 @@ const getCompanies = async (req, res, next) => {
       ];
     }
 
-    // Sorting
-    let sortOptions = {};
-    if (sort === 'name') {
-      sortOptions = { name: 1 };
-    } else if (sort === 'name_desc') {
-      sortOptions = { name: -1 };
+    // Mandatory priority ordering expression:
+    // 1. Kevit
+    // 2. TSS
+    // 3. RKIT
+    // 4. GN Websoft
+    // 5. All other companies afterward
+    const prioritySwitch = {
+      $switch: {
+        branches: [
+          {
+            case: {
+              $regexMatch: { input: '$normalizedName', regex: /^kevit/i },
+            },
+            then: 1,
+          },
+          {
+            case: {
+              $or: [
+                { $regexMatch: { input: '$normalizedName', regex: /^tss/i } },
+                { $in: ['TSS', '$aliases'] },
+              ],
+            },
+            then: 2,
+          },
+          {
+            case: {
+              $or: [
+                { $regexMatch: { input: '$normalizedName', regex: /^rkit/i } },
+                { $in: ['RKIT', '$aliases'] },
+              ],
+            },
+            then: 3,
+          },
+          {
+            case: {
+              $or: [
+                { $regexMatch: { input: '$normalizedName', regex: /^gn websoft/i } },
+                { $in: ['GN websoft', '$aliases'] },
+              ],
+            },
+            then: 4,
+          },
+        ],
+        default: 999,
+      },
+    };
+
+    // Sorting options with priorityOrder taking primary precedence
+    let sortStage = { priorityOrder: 1, name: 1 };
+    if (sort === 'name_desc') {
+      sortStage = { priorityOrder: 1, name: -1 };
     } else if (sort === 'experiences') {
-      sortOptions = { totalExperiencesCount: -1 };
+      sortStage = { priorityOrder: 1, totalExperiencesCount: -1, name: 1 };
     } else if (sort === 'newest') {
-      sortOptions = { createdAt: -1 };
-    } else {
-      sortOptions = { name: 1 };
+      sortStage = { priorityOrder: 1, createdAt: -1 };
     }
 
     const pageNum = Math.max(1, parseInt(page, 10));
     const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10)));
     const skip = (pageNum - 1) * limitNum;
 
-    const total = await Company.countDocuments(query);
-    const companies = await Company.find(query)
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(limitNum)
-      .lean();
+    const pipeline = [
+      { $match: query },
+      { $addFields: { priorityOrder: prioritySwitch } },
+      { $sort: sortStage },
+      {
+        $facet: {
+          metadata: [{ $count: 'total' }],
+          data: [{ $skip: skip }, { $limit: limitNum }],
+        },
+      },
+    ];
+
+    const [result] = await Company.aggregate(pipeline);
+    const total = result?.metadata[0]?.total || 0;
+    const companies = result?.data || [];
 
     res.json({
       success: true,
@@ -285,10 +337,38 @@ const deleteCompany = async (req, res, next) => {
   }
 };
 
+// @desc    Get public placement portal summary statistics from actual database records
+// @route   GET /api/companies/stats/summary
+// @access  Public
+const getPublicStats = async (req, res, next) => {
+  try {
+    const [companiesCount, experiencesCount, roundsCount, questionsCount] = await Promise.all([
+      Company.countDocuments({ isPublished: true }),
+      InterviewExperience.countDocuments({ isPublished: true }),
+      InterviewRound.countDocuments({ isPublished: true }),
+      Question.countDocuments({ isPublished: true }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        companiesCount,
+        experiencesCount,
+        roundsCount,
+        questionsCount,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getCompanies,
   getCompanyById,
+  getPublicStats,
   createCompany,
   updateCompany,
   deleteCompany,
 };
+

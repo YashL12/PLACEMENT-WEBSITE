@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 /**
- * Reusable CompanyLogo component with aspect ratio preservation,
- * image error fallback, initials placeholder, and zero layout shift.
+ * Reusable CompanyLogo component with aspect ratio preservation (object-fit: contain),
+ * image error fallback, neutral initials placeholder, and dynamic src change detection.
  */
 export const CompanyLogo = ({
   src,
@@ -13,9 +13,15 @@ export const CompanyLogo = ({
   const [imageError, setImageError] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  // Dimension presets
+  // Reset image error and loaded states whenever src prop changes
+  useEffect(() => {
+    setImageError(false);
+    setLoaded(false);
+  }, [src]);
+
+  // Dimension presets with consistent aspect ratio
   const sizeClasses = {
-    sm: 'w-8 h-8 text-xs',
+    sm: 'w-9 h-9 text-xs',
     md: 'w-11 h-11 text-sm',
     lg: 'w-14 h-14 text-base',
     xl: 'w-20 h-20 text-xl',
@@ -44,27 +50,29 @@ export const CompanyLogo = ({
       'bg-teal-50 text-teal-800 border-teal-200',
     ];
     let hash = 0;
-    for (let i = 0; i < str.length; i++) {
+    for (let i = 0; i < (str || '').length; i++) {
       hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
     return palettes[Math.abs(hash) % palettes.length];
   };
 
   const placeholderStyle = getPlaceholderColor(name);
+  const resolvedSrc = typeof src === 'string' && src.trim() ? src.trim() : null;
 
   return (
     <div
       className={`relative flex-shrink-0 flex items-center justify-center rounded-xl overflow-hidden border bg-white shadow-2xs ${sizeClasses[size] || sizeClasses.md} ${className}`}
+      title={name}
     >
-      {src && !imageError ? (
+      {resolvedSrc && !imageError ? (
         <>
           <img
-            src={src}
+            src={resolvedSrc}
             alt={`${name} official logo`}
             loading="lazy"
             onError={() => setImageError(true)}
             onLoad={() => setLoaded(true)}
-            className={`w-full h-full object-contain p-1.5 transition-opacity duration-200 ${
+            className={`w-full h-full object-contain p-1 transition-opacity duration-150 ${
               loaded ? 'opacity-100' : 'opacity-0'
             }`}
           />
@@ -77,7 +85,6 @@ export const CompanyLogo = ({
       ) : (
         <div
           className={`w-full h-full flex items-center justify-center font-bold tracking-wider select-none ${placeholderStyle}`}
-          title={name}
         >
           {initials}
         </div>
@@ -85,3 +92,4 @@ export const CompanyLogo = ({
     </div>
   );
 };
+

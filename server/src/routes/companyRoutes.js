@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   getCompanies,
   getCompanyById,
+  getPublicStats,
   createCompany,
   updateCompany,
   deleteCompany,
@@ -12,6 +13,7 @@ const { validateCompany } = require('../validators/companyValidator');
 
 // Public routes
 router.get('/', getCompanies);
+router.get('/stats/summary', getPublicStats);
 router.get('/:id', getCompanyById);
 
 // Protected Admin routes

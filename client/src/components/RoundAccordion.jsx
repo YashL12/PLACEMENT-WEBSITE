@@ -11,7 +11,7 @@ export const RoundAccordion = ({ round, defaultOpen = false }) => {
   const questionsCount = round.questions?.length || 0;
 
   return (
-    <div className="border border-slate-200 rounded-xl bg-white mb-3 shadow-2xs overflow-hidden transition-all duration-200 hover:border-slate-300">
+    <div className="border border-slate-200 rounded-2xl bg-white mb-3 shadow-sm overflow-hidden transition-all duration-200 hover:border-blue-200 hover:shadow-md">
       {/* Header */}
       <button
         type="button"

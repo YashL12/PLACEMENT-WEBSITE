@@ -32,6 +32,11 @@ export const api = {
     return handleResponse(res);
   },
 
+  async getPublicStats() {
+    const res = await fetch(`${API_BASE_URL}/companies/stats/summary`);
+    return handleResponse(res);
+  },
+
   async getCompanyById(id, includeUnpublished = false) {
     const query = includeUnpublished ? '?includeUnpublished=true' : '';
     const res = await fetch(`${API_BASE_URL}/companies/${id}${query}`);
