@@ -2,6 +2,15 @@ const Company = require('../models/Company');
 const InterviewExperience = require('../models/InterviewExperience');
 const InterviewRound = require('../models/InterviewRound');
 const Question = require('../models/Question');
+const CodingQuestion = require('../models/CodingQuestion');
+const { serverCache } = require('../utils/cache');
+
+// Helper to invalidate all company-related caches
+const invalidateCompanyCaches = () => {
+  serverCache.invalidatePrefix('companies');
+  serverCache.invalidatePrefix('company:');
+  serverCache.invalidatePrefix('stats:');
+};
 
 // @desc    Get all companies (public listing) with search, alias matching, year filtering, pagination
 // @route   GET /api/companies
@@ -16,6 +25,12 @@ const getCompanies = async (req, res, next) => {
       limit = 12,
       includeUnpublished = 'false',
     } = req.query;
+
+    const cacheKey = `companies:${search}:${year || ''}:${sort}:${page}:${limit}:${includeUnpublished}`;
+    const cachedResponse = serverCache.get(cacheKey);
+    if (cachedResponse) {
+      return res.json(cachedResponse);
+    }
 
     const query = {};
 
@@ -116,7 +131,7 @@ const getCompanies = async (req, res, next) => {
     const total = result?.metadata[0]?.total || 0;
     const companies = result?.data || [];
 
-    res.json({
+    const responsePayload = {
       success: true,
       data: {
         companies,
@@ -127,7 +142,12 @@ const getCompanies = async (req, res, next) => {
           pages: Math.ceil(total / limitNum) || 1,
         },
       },
-    });
+    };
+
+    // Cache list results for 30 seconds
+    serverCache.set(cacheKey, responsePayload, 30 * 1000);
+
+    res.json(responsePayload);
   } catch (error) {
     next(error);
   }
@@ -140,6 +160,12 @@ const getCompanyById = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { includeUnpublished = 'false' } = req.query;
+
+    const cacheKey = `company:${id}:${includeUnpublished}`;
+    const cachedResponse = serverCache.get(cacheKey);
+    if (cachedResponse) {
+      return res.json(cachedResponse);
+    }
 
     let company;
     if (id.match(/^[0-9a-fA-F]{24}$/)) {
@@ -178,50 +204,67 @@ const getCompanyById = async (req, res, next) => {
       .sort({ placementYear: -1, order: 1, createdAt: 1 })
       .lean();
 
-    // Fetch rounds and questions for each experience
-    const populatedExperiences = await Promise.all(
-      experiences.map(async (exp) => {
-        const roundQuery = { experience: exp._id };
-        if (includeUnpublished !== 'true') {
-          roundQuery.isPublished = true;
-        }
+    // Batch query rounds and questions — fixes N+1 DB query bottleneck
+    const expIds = experiences.map((exp) => exp._id);
+    const roundQuery = { experience: { $in: expIds } };
+    if (includeUnpublished !== 'true') {
+      roundQuery.isPublished = true;
+    }
 
-        const rounds = await InterviewRound.find(roundQuery)
-          .sort({ roundOrder: 1, roundNumber: 1 })
-          .lean();
+    const allRounds = await InterviewRound.find(roundQuery)
+      .sort({ roundOrder: 1, roundNumber: 1 })
+      .lean();
 
-        const populatedRounds = await Promise.all(
-          rounds.map(async (round) => {
-            const questionQuery = { round: round._id };
-            if (includeUnpublished !== 'true') {
-              questionQuery.isPublished = true;
-            }
+    const roundIds = allRounds.map((r) => r._id);
+    const questionQuery = { round: { $in: roundIds } };
+    if (includeUnpublished !== 'true') {
+      questionQuery.isPublished = true;
+    }
 
-            const questions = await Question.find(questionQuery)
-              .sort({ order: 1, createdAt: 1 })
-              .lean();
+    const allQuestions = await Question.find(questionQuery)
+      .sort({ order: 1, createdAt: 1 })
+      .lean();
 
-            return {
-              ...round,
-              questions,
-            };
-          })
-        );
+    // Map questions by roundId
+    const questionsByRound = new Map();
+    for (const q of allQuestions) {
+      const rId = String(q.round);
+      if (!questionsByRound.has(rId)) {
+        questionsByRound.set(rId, []);
+      }
+      questionsByRound.get(rId).push(q);
+    }
 
-        return {
-          ...exp,
-          rounds: populatedRounds,
-        };
-      })
-    );
+    // Map rounds by experienceId
+    const roundsByExp = new Map();
+    for (const r of allRounds) {
+      const eId = String(r.experience);
+      if (!roundsByExp.has(eId)) {
+        roundsByExp.set(eId, []);
+      }
+      roundsByExp.get(eId).push({
+        ...r,
+        questions: questionsByRound.get(String(r._id)) || [],
+      });
+    }
 
-    res.json({
+    const populatedExperiences = experiences.map((exp) => ({
+      ...exp,
+      rounds: roundsByExp.get(String(exp._id)) || [],
+    }));
+
+    const responsePayload = {
       success: true,
       data: {
         company,
         experiences: populatedExperiences,
       },
-    });
+    };
+
+    // Cache detail results for 60 seconds
+    serverCache.set(cacheKey, responsePayload, 60 * 1000);
+
+    res.json(responsePayload);
   } catch (error) {
     next(error);
   }
@@ -232,7 +275,23 @@ const getCompanyById = async (req, res, next) => {
 // @access  Protected
 const createCompany = async (req, res, next) => {
   try {
-    const { name, aliases = [], website = '', logoUrl = '', about = '', generalAdvice = [], isPublished = true } = req.body;
+    const {
+      name,
+      aliases = [],
+      website = '',
+      logoUrl = '',
+      about = '',
+      generalAdvice = [],
+      placementYears = [],
+      isPublished = true,
+    } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Company name is required',
+      });
+    }
 
     const normalizedName = name.trim().toLowerCase();
     const existing = await Company.findOne({
@@ -246,16 +305,29 @@ const createCompany = async (req, res, next) => {
       });
     }
 
+    const sanitizedAliases = Array.isArray(aliases)
+      ? aliases.map((a) => String(a).trim()).filter(Boolean)
+      : typeof aliases === 'string'
+      ? aliases.split(',').map((a) => a.trim()).filter(Boolean)
+      : [];
+
+    const sanitizedYears = Array.isArray(placementYears)
+      ? placementYears.map((y) => parseInt(y, 10)).filter((y) => !isNaN(y))
+      : [];
+
     const company = await Company.create({
       name: name.trim(),
       normalizedName,
-      aliases: aliases.map((a) => a.trim()).filter(Boolean),
+      aliases: sanitizedAliases,
       website: website.trim(),
       logoUrl: logoUrl.trim(),
       about: about.trim(),
-      generalAdvice,
-      isPublished,
+      generalAdvice: Array.isArray(generalAdvice) ? generalAdvice.filter(Boolean) : [],
+      placementYears: sanitizedYears,
+      isPublished: isPublished ?? true,
     });
+
+    invalidateCompanyCaches();
 
     res.status(201).json({
       success: true,
@@ -273,7 +345,18 @@ const createCompany = async (req, res, next) => {
 const updateCompany = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, aliases, website, logoUrl, about, generalAdvice, isPublished, needsReview, reviewNotes } = req.body;
+    const {
+      name,
+      aliases,
+      website,
+      logoUrl,
+      about,
+      generalAdvice,
+      placementYears,
+      isPublished,
+      needsReview,
+      reviewNotes,
+    } = req.body;
 
     const company = await Company.findById(id);
     if (!company) {
@@ -283,25 +366,92 @@ const updateCompany = async (req, res, next) => {
       });
     }
 
-    if (name) {
+    if (name && name.trim()) {
+      const newNormalized = name.trim().toLowerCase();
+      if (newNormalized !== company.normalizedName) {
+        const existing = await Company.findOne({
+          _id: { $ne: company._id },
+          $or: [{ name: name.trim() }, { normalizedName: newNormalized }],
+        });
+        if (existing) {
+          return res.status(400).json({
+            success: false,
+            message: `Another company named '${name.trim()}' already exists`,
+          });
+        }
+      }
       company.name = name.trim();
-      company.normalizedName = name.trim().toLowerCase();
+      company.normalizedName = newNormalized;
     }
-    if (aliases !== undefined) company.aliases = aliases;
+
+    if (aliases !== undefined) {
+      company.aliases = Array.isArray(aliases)
+        ? aliases.map((a) => String(a).trim()).filter(Boolean)
+        : typeof aliases === 'string'
+        ? aliases.split(',').map((a) => a.trim()).filter(Boolean)
+        : [];
+    }
+
     if (website !== undefined) company.website = website.trim();
     if (logoUrl !== undefined) company.logoUrl = logoUrl.trim();
     if (about !== undefined) company.about = about.trim();
-    if (generalAdvice !== undefined) company.generalAdvice = generalAdvice;
-    if (isPublished !== undefined) company.isPublished = isPublished;
-    if (needsReview !== undefined) company.needsReview = needsReview;
-    if (reviewNotes !== undefined) company.reviewNotes = reviewNotes;
+    if (generalAdvice !== undefined) {
+      company.generalAdvice = Array.isArray(generalAdvice) ? generalAdvice.filter(Boolean) : [];
+    }
+    if (placementYears !== undefined) {
+      company.placementYears = Array.isArray(placementYears)
+        ? placementYears.map((y) => parseInt(y, 10)).filter((y) => !isNaN(y))
+        : [];
+    }
+    if (isPublished !== undefined) company.isPublished = Boolean(isPublished);
+    if (needsReview !== undefined) company.needsReview = Boolean(needsReview);
+    if (reviewNotes !== undefined) company.reviewNotes = String(reviewNotes);
 
     await company.save();
+
+    invalidateCompanyCaches();
 
     res.json({
       success: true,
       data: company,
       message: 'Company updated successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Upload company logo (Admin only)
+// @route   POST /api/companies/upload-logo or POST /api/companies/:id/logo
+// @access  Protected
+const uploadCompanyLogo = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No image file uploaded. Please select a valid PNG, JPG, SVG, or WebP logo file.',
+      });
+    }
+
+    const publicLogoUrl = `/uploads/logos/${req.file.filename}`;
+    const { id } = req.params;
+
+    let company = null;
+    if (id) {
+      company = await Company.findById(id);
+      if (company) {
+        company.logoUrl = publicLogoUrl;
+        await company.save();
+      }
+    }
+
+    invalidateCompanyCaches();
+
+    res.json({
+      success: true,
+      logoUrl: publicLogoUrl,
+      data: company,
+      message: 'Logo uploaded successfully',
     });
   } catch (error) {
     next(error);
@@ -328,6 +478,8 @@ const deleteCompany = async (req, res, next) => {
     await InterviewExperience.deleteMany({ company: company._id });
     await company.deleteOne();
 
+    invalidateCompanyCaches();
+
     res.json({
       success: true,
       message: `Company '${company.name}' and all associated experiences were deleted successfully`,
@@ -342,22 +494,34 @@ const deleteCompany = async (req, res, next) => {
 // @access  Public
 const getPublicStats = async (req, res, next) => {
   try {
-    const [companiesCount, experiencesCount, roundsCount, questionsCount] = await Promise.all([
+    const cacheKey = 'stats:summary';
+    const cachedStats = serverCache.get(cacheKey);
+    if (cachedStats) {
+      return res.json(cachedStats);
+    }
+
+    const [companiesCount, experiencesCount, roundsCount, questionsCount, codingQuestionsCount] = await Promise.all([
       Company.countDocuments({ isPublished: true }),
       InterviewExperience.countDocuments({ isPublished: true }),
       InterviewRound.countDocuments({ isPublished: true }),
       Question.countDocuments({ isPublished: true }),
+      CodingQuestion.countDocuments({ isPublished: true }),
     ]);
 
-    res.json({
+    const payload = {
       success: true,
       data: {
         companiesCount,
         experiencesCount,
         roundsCount,
         questionsCount,
+        codingQuestionsCount,
       },
-    });
+    };
+
+    serverCache.set(cacheKey, payload, 60 * 1000); // 1 minute TTL
+
+    res.json(payload);
   } catch (error) {
     next(error);
   }
@@ -369,6 +533,8 @@ module.exports = {
   getPublicStats,
   createCompany,
   updateCompany,
+  uploadCompanyLogo,
   deleteCompany,
 };
+
 

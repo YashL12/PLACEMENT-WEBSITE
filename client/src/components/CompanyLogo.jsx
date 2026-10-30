@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { Building2 } from 'lucide-react';
+
+// Global memory cache for image loading status across components
+const loadedImagesCache = new Set();
+const failedImagesCache = new Set();
 
 /**
  * Reusable CompanyLogo component with aspect ratio preservation (object-fit: contain),
- * image error fallback, neutral initials placeholder, and dynamic src change detection.
+ * reliable fallback for missing/broken logos, in-memory caching to prevent flash,
+ * and elegant monogram badges.
  */
 export const CompanyLogo = ({
   src,
@@ -10,14 +16,48 @@ export const CompanyLogo = ({
   size = 'md', // 'sm' | 'md' | 'lg' | 'xl'
   className = '',
 }) => {
-  const [imageError, setImageError] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const resolvedSrc = typeof src === 'string' && src.trim() ? src.trim() : null;
 
-  // Reset image error and loaded states whenever src prop changes
+  // Initialize with cached state if available
+  const [imageError, setImageError] = useState(() => (resolvedSrc ? failedImagesCache.has(resolvedSrc) : true));
+  const [loaded, setLoaded] = useState(() => (resolvedSrc ? loadedImagesCache.has(resolvedSrc) : false));
+
   useEffect(() => {
+    if (!resolvedSrc) {
+      setImageError(true);
+      setLoaded(false);
+      return;
+    }
+    if (failedImagesCache.has(resolvedSrc)) {
+      setImageError(true);
+      setLoaded(false);
+      return;
+    }
+    if (loadedImagesCache.has(resolvedSrc)) {
+      setImageError(false);
+      setLoaded(true);
+      return;
+    }
+
     setImageError(false);
     setLoaded(false);
-  }, [src]);
+  }, [resolvedSrc]);
+
+  const handleLoad = () => {
+    if (resolvedSrc) {
+      loadedImagesCache.add(resolvedSrc);
+    }
+    setLoaded(true);
+    setImageError(false);
+  };
+
+  const handleError = () => {
+    if (resolvedSrc) {
+      failedImagesCache.add(resolvedSrc);
+    }
+    setImageError(true);
+    setLoaded(false);
+  };
 
   // Dimension presets with consistent aspect ratio
   const sizeClasses = {
@@ -39,15 +79,14 @@ export const CompanyLogo = ({
 
   const initials = getInitials(name);
 
-  // Generate consistent subtle pastel background based on company name
+  // Curated elegant color palettes matching the light professional theme
   const getPlaceholderColor = (str) => {
     const palettes = [
-      'bg-slate-100 text-slate-700 border-slate-200',
-      'bg-blue-50 text-blue-800 border-blue-200',
-      'bg-indigo-50 text-indigo-800 border-indigo-200',
-      'bg-emerald-50 text-emerald-800 border-emerald-200',
-      'bg-sky-50 text-sky-800 border-sky-200',
-      'bg-teal-50 text-teal-800 border-teal-200',
+      'bg-blue-50 text-blue-700 border-blue-200/80',
+      'bg-indigo-50 text-indigo-700 border-indigo-200/80',
+      'bg-sky-50 text-sky-700 border-sky-200/80',
+      'bg-slate-50 text-slate-700 border-slate-200',
+      'bg-emerald-50 text-emerald-700 border-emerald-200/80',
     ];
     let hash = 0;
     for (let i = 0; i < (str || '').length; i++) {
@@ -57,11 +96,10 @@ export const CompanyLogo = ({
   };
 
   const placeholderStyle = getPlaceholderColor(name);
-  const resolvedSrc = typeof src === 'string' && src.trim() ? src.trim() : null;
 
   return (
     <div
-      className={`relative flex-shrink-0 flex items-center justify-center rounded-xl overflow-hidden border bg-white shadow-2xs ${sizeClasses[size] || sizeClasses.md} ${className}`}
+      className={`relative flex-shrink-0 flex items-center justify-center rounded-xl overflow-hidden border bg-white shadow-2xs transition-all duration-150 ${sizeClasses[size] || sizeClasses.md} ${className}`}
       title={name}
     >
       {resolvedSrc && !imageError ? (
@@ -70,26 +108,26 @@ export const CompanyLogo = ({
             src={resolvedSrc}
             alt={`${name} official logo`}
             loading="lazy"
-            onError={() => setImageError(true)}
-            onLoad={() => setLoaded(true)}
-            className={`w-full h-full object-contain p-1 transition-opacity duration-150 ${
+            decoding="async"
+            onError={handleError}
+            onLoad={handleLoad}
+            className={`w-full h-full object-contain p-1.5 select-none transition-opacity duration-150 ${
               loaded ? 'opacity-100' : 'opacity-0'
             }`}
           />
           {!loaded && (
-            <div className={`absolute inset-0 flex items-center justify-center font-bold tracking-wider ${placeholderStyle}`}>
+            <div className={`absolute inset-0 flex items-center justify-center font-bold tracking-wider select-none ${placeholderStyle}`}>
               {initials}
             </div>
           )}
         </>
       ) : (
         <div
-          className={`w-full h-full flex items-center justify-center font-bold tracking-wider select-none ${placeholderStyle}`}
+          className={`w-full h-full flex flex-col items-center justify-center font-bold tracking-wider select-none border ${placeholderStyle}`}
         >
-          {initials}
+          <span>{initials}</span>
         </div>
       )}
     </div>
   );
 };
-

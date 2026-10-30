@@ -1,9 +1,9 @@
 const rateLimit = require('express-rate-limit');
 
-// General API rate limiter
+// General API rate limiter - generous limit to avoid false throttling of active students
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // Limit each IP to 300 requests per 15 minutes
+  max: process.env.NODE_ENV === 'development' ? 5000 : 1200, // Higher ceiling
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -12,10 +12,10 @@ const apiLimiter = rateLimit({
   },
 });
 
-// Stricter rate limiter for authentication routes
+// Rate limiter for authentication routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20, // 20 login attempts per 15 mins
+  max: 50, // 50 attempts per 15 mins
   standardHeaders: true,
   legacyHeaders: false,
   message: {

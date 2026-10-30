@@ -17,18 +17,33 @@ const generateToken = (id) => {
   );
 };
 
-// @desc    Admin login
+// @desc    Admin login (supports User ID / Username or Email)
 // @route   POST /api/admin/login
 // @access  Public
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, username, userId } = req.body;
+    const identifier = (email || username || userId || '').trim();
 
-    const admin = await Admin.findOne({ email: email.toLowerCase().trim() });
+    if (!identifier) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID or Email is required',
+      });
+    }
+
+    const admin = await Admin.findOne({
+      $or: [
+        { email: identifier.toLowerCase() },
+        { username: identifier },
+        { username: identifier.toLowerCase() },
+      ],
+    });
+
     if (!admin) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password',
+        message: 'Invalid credentials. Please check your User ID / Email and password.',
       });
     }
 
@@ -36,7 +51,7 @@ const login = async (req, res, next) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password',
+        message: 'Invalid credentials. Please check your User ID / Email and password.',
       });
     }
 
@@ -287,9 +302,139 @@ const getImportReports = async (req, res, next) => {
   }
 };
 
+// @desc    Change admin user ID, email, and/or password
+// @route   PUT /api/admin/credentials
+// @access  Protected
+const updateCredentials = async (req, res, next) => {
+  try {
+    const { currentPassword, newUserId, newUsername, newEmail, newPassword, confirmPassword } = req.body;
+    const targetUserId = (newUserId || newUsername || '').trim();
+
+    if (!currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password is required to verify your identity',
+      });
+    }
+
+    // Load admin with password field to verify
+    const admin = await Admin.findById(req.admin._id);
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: 'Admin account not found',
+      });
+    }
+
+    // Verify current password
+    const isMatch = await admin.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password verification failed. Please enter your correct current password.',
+      });
+    }
+
+    let updatedSomething = false;
+
+    // Handle User ID / Username change
+    if (targetUserId) {
+      if (targetUserId !== admin.username) {
+        // Ensure no other admin has this username
+        const conflict = await Admin.findOne({
+          _id: { $ne: admin._id },
+          $or: [
+            { username: targetUserId },
+            { username: targetUserId.toLowerCase() },
+            { email: targetUserId.toLowerCase() },
+          ],
+        });
+        if (conflict) {
+          return res.status(400).json({
+            success: false,
+            message: `User ID '${targetUserId}' is already in use by another account`,
+          });
+        }
+        admin.username = targetUserId;
+        updatedSomething = true;
+      }
+    }
+
+    // Handle Email change if provided
+    if (newEmail && newEmail.trim()) {
+      const sanitizedEmail = newEmail.trim().toLowerCase();
+      if (sanitizedEmail !== admin.email) {
+        const conflict = await Admin.findOne({
+          _id: { $ne: admin._id },
+          email: sanitizedEmail,
+        });
+        if (conflict) {
+          return res.status(400).json({
+            success: false,
+            message: `Email '${sanitizedEmail}' is already registered`,
+          });
+        }
+        admin.email = sanitizedEmail;
+        updatedSomething = true;
+      }
+    }
+
+    // Handle Password change
+    if (newPassword) {
+      if (newPassword.length < 8) {
+        return res.status(400).json({
+          success: false,
+          message: 'New password must be at least 8 characters long',
+        });
+      }
+      if (confirmPassword !== undefined && newPassword !== confirmPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'New password and confirm password do not match',
+        });
+      }
+
+      // Check if new password is same as current password
+      const isSame = await admin.comparePassword(newPassword);
+      if (isSame) {
+        return res.status(400).json({
+          success: false,
+          message: 'New password must be different from your current password',
+        });
+      }
+
+      admin.password = newPassword; // Pre-save hook will hash it with bcrypt salt
+      updatedSomething = true;
+    }
+
+    if (!updatedSomething) {
+      return res.status(400).json({
+        success: false,
+        message: 'No changes provided. Please enter a new User ID, email, or new password.',
+      });
+    }
+
+    await admin.save();
+
+    res.json({
+      success: true,
+      data: {
+        _id: admin._id,
+        username: admin.username,
+        email: admin.email,
+        role: admin.role,
+      },
+      message: 'Admin credentials updated successfully! Please use your updated credentials for future logins.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   login,
   getMe,
+  updateCredentials,
   getDashboardStats,
   getReviewQueue,
   resolveReview,

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ShieldCheck,
   Building2,
@@ -29,8 +29,16 @@ import {
   FileSpreadsheet,
   FileArchive,
   Briefcase,
+  Settings,
+  KeyRound,
+  Lock,
+  UserCheck,
+  Image as ImageIcon,
+  AlertCircle,
+  Check,
 } from 'lucide-react';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { Badge } from '../components/Badge';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CompanyLogo } from '../components/CompanyLogo';
@@ -47,6 +55,12 @@ const MATERIAL_CATEGORIES = [
 ];
 
 export const AdminDashboardPage = () => {
+  const { admin, updateAdmin } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const validTabs = ['companies', 'materials', 'alumni', 'review', 'reports', 'settings'];
+  const initialTab = searchParams.get('tab') || 'review';
+  const [activeTab, setActiveTab] = useState(validTabs.includes(initialTab) ? initialTab : 'review');
+
   const [stats, setStats] = useState(null);
   const [reviewQueue, setReviewQueue] = useState({ companies: [], experiences: [] });
   const [companies, setCompanies] = useState([]);
@@ -56,7 +70,28 @@ export const AdminDashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('review'); // 'review' | 'companies' | 'materials' | 'alumni' | 'reports'
+
+  // Logo upload ref & state for companies table
+  const logoInputRef = useRef(null);
+  const [uploadingLogoCompanyId, setUploadingLogoCompanyId] = useState(null);
+
+  // Custom Delete Confirmation Modal state
+  const [companyToDelete, setCompanyToDelete] = useState(null);
+  const [deletingCompany, setDeletingCompany] = useState(false);
+
+  // Credential Settings state
+  const [credForm, setCredForm] = useState({
+    currentPasswordForUser: '',
+    newUsername: '',
+    newEmail: '',
+    currentPasswordForPass: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [userUpdating, setUserUpdating] = useState(false);
+  const [passUpdating, setPassUpdating] = useState(false);
+  const [credSuccessMsg, setCredSuccessMsg] = useState(null);
+  const [credErrorMsg, setCredErrorMsg] = useState(null);
 
   // Modal states for Material Upload
   const [showMaterialModal, setShowMaterialModal] = useState(false);
@@ -89,6 +124,20 @@ export const AdminDashboardPage = () => {
 
   const navigate = useNavigate();
 
+  // Sync tab with URL search parameter
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl && tabFromUrl !== activeTab && validTabs.includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [searchParams]);
+
+  const switchTab = (tabName) => {
+    setActiveTab(tabName);
+    setSearchTerm('');
+    setSearchParams({ tab: tabName }, { replace: true });
+  };
+
   const loadDashboardData = async () => {
     try {
       setLoading(true);
@@ -120,23 +169,102 @@ export const AdminDashboardPage = () => {
 
   const showNotification = (msg) => {
     setActionMessage(msg);
-    setTimeout(() => setActionMessage(null), 3000);
+    setTimeout(() => setActionMessage(null), 3500);
   };
 
-  // Toggle company publication
+  // Toggle company publication with optimistic instant UI update
   const handleToggleCompanyPublish = async (company) => {
+    const nextStatus = !company.isPublished;
+    setCompanies((prev) =>
+      prev.map((c) => (c._id === company._id ? { ...c, isPublished: nextStatus } : c))
+    );
     try {
       const res = await api.updateCompany(company._id, {
-        isPublished: !company.isPublished,
+        isPublished: nextStatus,
       });
       if (res.success) {
         showNotification(
-          `Company '${company.name}' ${!company.isPublished ? 'Published' : 'Unpublished'}`
+          `Company '${company.name}' ${nextStatus ? 'Published' : 'Unpublished'}`
         );
-        loadDashboardData();
+      } else {
+        // Rollback on failure
+        setCompanies((prev) =>
+          prev.map((c) => (c._id === company._id ? { ...c, isPublished: !nextStatus } : c))
+        );
+        alert(res.message || 'Error updating publication status');
       }
     } catch (err) {
+      setCompanies((prev) =>
+        prev.map((c) => (c._id === company._id ? { ...c, isPublished: !nextStatus } : c))
+      );
       alert(`Error updating publication status: ${err.message}`);
+    }
+  };
+
+  // Direct Company Logo Upload from row
+  const triggerLogoUpload = (companyId) => {
+    setUploadingLogoCompanyId(companyId);
+    if (logoInputRef.current) {
+      logoInputRef.current.value = '';
+      logoInputRef.current.click();
+    }
+  };
+
+  const handleLogoFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadingLogoCompanyId) return;
+
+    try {
+      showNotification('Uploading company logo...');
+      const uploadRes = await api.uploadCompanyLogo(file);
+      if (uploadRes.success && uploadRes.data?.logoUrl) {
+        const newLogoUrl = uploadRes.data.logoUrl;
+        const updateRes = await api.updateCompany(uploadingLogoCompanyId, { logoUrl: newLogoUrl });
+        if (updateRes.success) {
+          setCompanies((prev) =>
+            prev.map((c) =>
+              c._id === uploadingLogoCompanyId ? { ...c, logoUrl: newLogoUrl } : c
+            )
+          );
+          showNotification('Company logo updated and cached successfully!');
+        }
+      }
+    } catch (err) {
+      alert(`Logo upload failed: ${err.message}`);
+    } finally {
+      setUploadingLogoCompanyId(null);
+    }
+  };
+
+  // Confirm and execute company deletion
+  const confirmDeleteCompany = async () => {
+    if (!companyToDelete) return;
+    try {
+      setDeletingCompany(true);
+      const res = await api.deleteCompany(companyToDelete._id);
+      if (res.success) {
+        setCompanies((prev) => prev.filter((c) => c._id !== companyToDelete._id));
+        setStats((prev) =>
+          prev
+            ? {
+                ...prev,
+                totals: {
+                  ...prev.totals,
+                  companies: Math.max(0, prev.totals.companies - 1),
+                  publishedCompanies: companyToDelete.isPublished
+                    ? Math.max(0, prev.totals.publishedCompanies - 1)
+                    : prev.totals.publishedCompanies,
+                },
+              }
+            : prev
+        );
+        showNotification(res.message || `Deleted '${companyToDelete.name}'`);
+        setCompanyToDelete(null);
+      }
+    } catch (err) {
+      alert(`Error deleting company: ${err.message}`);
+    } finally {
+      setDeletingCompany(false);
     }
   };
 
@@ -160,22 +288,92 @@ export const AdminDashboardPage = () => {
     }
   };
 
-  // Delete company
-  const handleDeleteCompany = async (company) => {
-    if (
-      window.confirm(
-        `Are you sure you want to delete '${company.name}'? This will permanently delete all its interview experiences, rounds, and questions.`
-      )
-    ) {
-      try {
-        const res = await api.deleteCompany(company._id);
-        if (res.success) {
-          showNotification(res.message);
-          loadDashboardData();
-        }
-      } catch (err) {
-        alert(`Error deleting company: ${err.message}`);
+  // Update Admin User ID / Username & Email handler
+  const handleUpdateAdminUser = async (e) => {
+    e.preventDefault();
+    setCredSuccessMsg(null);
+    setCredErrorMsg(null);
+
+    if (!credForm.currentPasswordForUser) {
+      setCredErrorMsg('Current password is required to verify your identity');
+      return;
+    }
+    if (!credForm.newUsername.trim() && !credForm.newEmail.trim()) {
+      setCredErrorMsg('Please specify a new User ID / Username or new Email address');
+      return;
+    }
+
+    try {
+      setUserUpdating(true);
+      const payload = {
+        currentPassword: credForm.currentPasswordForUser,
+      };
+      if (credForm.newUsername.trim()) payload.newUsername = credForm.newUsername.trim();
+      if (credForm.newEmail.trim()) payload.newEmail = credForm.newEmail.trim();
+
+      const res = await api.updateAdminCredentials(payload);
+      if (res.success) {
+        updateAdmin(res.data);
+        setCredSuccessMsg(res.message || 'Administrator User ID updated successfully! Use your new User ID on next login.');
+        setCredForm((prev) => ({
+          ...prev,
+          currentPasswordForUser: '',
+          newUsername: '',
+          newEmail: '',
+        }));
       }
+    } catch (err) {
+      setCredErrorMsg(err.message || 'Failed to update credentials');
+    } finally {
+      setUserUpdating(false);
+    }
+  };
+
+  // Update Admin Password handler
+  const handleUpdateAdminPassword = async (e) => {
+    e.preventDefault();
+    setCredSuccessMsg(null);
+    setCredErrorMsg(null);
+
+    if (!credForm.currentPasswordForPass) {
+      setCredErrorMsg('Current password is required');
+      return;
+    }
+    if (!credForm.newPassword) {
+      setCredErrorMsg('New password is required');
+      return;
+    }
+    if (credForm.newPassword.length < 8) {
+      setCredErrorMsg('New password must be at least 8 characters long');
+      return;
+    }
+    if (credForm.newPassword !== credForm.confirmPassword) {
+      setCredErrorMsg('New password and confirm password do not match');
+      return;
+    }
+
+    try {
+      setPassUpdating(true);
+      const res = await api.updateAdminCredentials({
+        currentPassword: credForm.currentPasswordForPass,
+        newPassword: credForm.newPassword,
+        confirmPassword: credForm.confirmPassword,
+      });
+
+      if (res.success) {
+        updateAdmin(res.data);
+        setCredSuccessMsg('Administrator password changed successfully! Your old password has been invalidated.');
+        setCredForm((prev) => ({
+          ...prev,
+          currentPasswordForPass: '',
+          newPassword: '',
+          confirmPassword: '',
+        }));
+      }
+    } catch (err) {
+      setCredErrorMsg(err.message || 'Failed to update password');
+    } finally {
+      setPassUpdating(false);
     }
   };
 
@@ -553,7 +751,7 @@ export const AdminDashboardPage = () => {
       {/* Navigation Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 mb-6 overflow-x-auto no-scrollbar">
         <button
-          onClick={() => { setActiveTab('companies'); setSearchTerm(''); }}
+          onClick={() => switchTab('companies')}
           className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-2 ${
             activeTab === 'companies'
               ? 'border-blue-700 text-blue-700'
@@ -565,7 +763,7 @@ export const AdminDashboardPage = () => {
         </button>
 
         <button
-          onClick={() => { setActiveTab('materials'); setSearchTerm(''); }}
+          onClick={() => switchTab('materials')}
           className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-2 ${
             activeTab === 'materials'
               ? 'border-indigo-700 text-indigo-700'
@@ -577,7 +775,7 @@ export const AdminDashboardPage = () => {
         </button>
 
         <button
-          onClick={() => { setActiveTab('alumni'); setSearchTerm(''); }}
+          onClick={() => switchTab('alumni')}
           className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-2 ${
             activeTab === 'alumni'
               ? 'border-emerald-700 text-emerald-700'
@@ -589,7 +787,7 @@ export const AdminDashboardPage = () => {
         </button>
 
         <button
-          onClick={() => { setActiveTab('review'); setSearchTerm(''); }}
+          onClick={() => switchTab('review')}
           className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-2 ${
             activeTab === 'review'
               ? 'border-amber-600 text-amber-700'
@@ -601,7 +799,7 @@ export const AdminDashboardPage = () => {
         </button>
 
         <button
-          onClick={() => { setActiveTab('reports'); setSearchTerm(''); }}
+          onClick={() => switchTab('reports')}
           className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-2 ${
             activeTab === 'reports'
               ? 'border-slate-800 text-slate-900'
@@ -611,7 +809,28 @@ export const AdminDashboardPage = () => {
           <Clock className="w-4 h-4" />
           <span>Import History</span>
         </button>
+
+        <button
+          onClick={() => switchTab('settings')}
+          className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-2 ${
+            activeTab === 'settings'
+              ? 'border-blue-700 text-blue-700 bg-blue-50/40 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+          <span>Settings & Security</span>
+        </button>
       </div>
+
+      {/* Hidden file input for fast company logo upload */}
+      <input
+        type="file"
+        ref={logoInputRef}
+        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+        onChange={handleLogoFileChange}
+        className="hidden"
+      />
 
       {/* TAB 1: Companies & Logos Management */}
       {activeTab === 'companies' && (
@@ -627,12 +846,22 @@ export const AdminDashboardPage = () => {
                 className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
-            <span className="text-xs text-slate-500 font-medium">
-              Total {filteredCompanies.length} companies
-            </span>
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+              <span className="text-xs text-slate-500 font-medium">
+                {filteredCompanies.length} of {companies.length} companies
+              </span>
+              <Link
+                to="/admin/companies/new"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold shadow-2xs transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Company</span>
+              </Link>
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs text-slate-600">
               <thead className="bg-slate-50 text-[11px] font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
                 <tr>
@@ -649,7 +878,18 @@ export const AdminDashboardPage = () => {
                 {filteredCompanies.map((c) => (
                   <tr key={c._id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-3 px-4">
-                      <CompanyLogo src={c.logoUrl} name={c.name} size="sm" />
+                      <div className="flex items-center gap-2">
+                        <CompanyLogo src={c.logoUrl} name={c.name} size="sm" />
+                        <button
+                          type="button"
+                          onClick={() => triggerLogoUpload(c._id)}
+                          disabled={uploadingLogoCompanyId === c._id}
+                          className="p-1 rounded text-slate-400 hover:text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer"
+                          title="Change / Upload Company Logo"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                     <td className="py-3 px-4 font-semibold text-slate-900">
                       <Link to={`/companies/${c._id}`} className="hover:text-blue-700 transition-colors">
@@ -672,14 +912,14 @@ export const AdminDashboardPage = () => {
                     <td className="py-3 px-4">
                       <div className="flex gap-1 flex-wrap">
                         {c.placementYears?.map((y) => (
-                          <Badge key={y} variant={y === 2025 ? 'year2025' : 'year2024'}>
+                          <Badge key={y} variant={y === 2026 ? 'year2026' : y === 2025 ? 'year2025' : 'year2024'}>
                             {y}
                           </Badge>
                         ))}
                       </div>
                     </td>
                     <td className="py-3 px-4 font-medium text-slate-700">
-                      {c.totalExperiencesCount}
+                      {c.totalExperiencesCount || 0}
                     </td>
                     <td className="py-3 px-4">
                       <button
@@ -704,16 +944,16 @@ export const AdminDashboardPage = () => {
                       </button>
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
                         <Link
                           to={`/admin/companies/${c._id}/edit`}
                           className="p-1.5 rounded-lg text-slate-500 hover:text-blue-700 hover:bg-blue-50 transition-colors"
-                          title="Edit Company & Logo"
+                          title="Edit Company Details & Logo"
                         >
                           <Edit className="w-4 h-4" />
                         </Link>
                         <button
-                          onClick={() => handleDeleteCompany(c)}
+                          onClick={() => setCompanyToDelete(c)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                           title="Delete Company"
                         >
@@ -723,8 +963,85 @@ export const AdminDashboardPage = () => {
                     </td>
                   </tr>
                 ))}
+                {filteredCompanies.length === 0 && (
+                  <tr>
+                    <td colSpan="7" className="py-12 text-center text-slate-400 text-xs">
+                      No companies match your search.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {filteredCompanies.map((c) => (
+              <div key={c._id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <CompanyLogo src={c.logoUrl} name={c.name} size="md" />
+                    <div>
+                      <Link to={`/companies/${c._id}`} className="font-bold text-slate-900 text-sm hover:text-blue-700 block">
+                        {c.name}
+                      </Link>
+                      <span className="text-[11px] text-slate-500">
+                        {c.totalExperiencesCount || 0} Experiences
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => triggerLogoUpload(c._id)}
+                    disabled={uploadingLogoCompanyId === c._id}
+                    className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-[11px] flex items-center gap-1"
+                    title="Change Logo"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Logo</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                  <div className="flex gap-1 flex-wrap">
+                    {c.placementYears?.map((y) => (
+                      <Badge key={y} variant={y === 2026 ? 'year2026' : y === 2025 ? 'year2025' : 'year2024'}>
+                        {y}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleToggleCompanyPublish(c)}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border ${
+                        c.isPublished
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-amber-50 text-amber-800 border-amber-200'
+                      }`}
+                    >
+                      {c.isPublished ? 'Published' : 'Hidden'}
+                    </button>
+                    <Link
+                      to={`/admin/companies/${c._id}/edit`}
+                      className="p-1.5 rounded-lg text-slate-600 hover:text-blue-700 hover:bg-blue-50"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Link>
+                    <button
+                      onClick={() => setCompanyToDelete(c)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {filteredCompanies.length === 0 && (
+              <div className="py-10 text-center text-slate-400 text-xs">
+                No companies match your search.
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1162,6 +1479,287 @@ export const AdminDashboardPage = () => {
         </div>
       )}
 
+      {/* TAB 6: Settings & Administrator Security */}
+      {activeTab === 'settings' && (
+        <div className="space-y-6">
+          {/* Header Info */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <ShieldCheck className="w-5 h-5 text-blue-700" />
+                  <h2 className="text-base font-bold text-slate-900">
+                    Administrator Security & Credentials
+                  </h2>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Manage your admin login identifier (User ID / Username / Email) and change account password.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs">
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
+                    Active User ID
+                  </span>
+                  <span className="font-mono font-bold text-slate-900">
+                    {admin?.username || 'admin'}
+                  </span>
+                </div>
+                <div className="h-6 w-px bg-slate-200" />
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
+                    Email
+                  </span>
+                  <span className="text-slate-700 font-medium">
+                    {admin?.email || 'admin@placementportal.edu'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Success Banner */}
+            {credSuccessMsg && (
+              <div className="mt-4 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-medium flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>{credSuccessMsg}</span>
+                </div>
+                <button
+                  onClick={() => setCredSuccessMsg(null)}
+                  className="text-emerald-600 hover:text-emerald-800 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Error Banner */}
+            {credErrorMsg && (
+              <div className="mt-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-medium flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  <span>{credErrorMsg}</span>
+                </div>
+                <button
+                  onClick={() => setCredErrorMsg(null)}
+                  className="text-rose-600 hover:text-rose-800 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Form Cards Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Card A: Change User ID / Email */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 pb-3 mb-4 border-b border-slate-100">
+                  <UserCheck className="w-4 h-4 text-blue-700" />
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Change Administrator User ID
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                  Update the User ID or username used to log into the administrative console. You can also update the email address.
+                </p>
+
+                <form onSubmit={handleUpdateAdminUser} className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      Current Password <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={credForm.currentPasswordForUser}
+                      onChange={(e) =>
+                        setCredForm({ ...credForm, currentPasswordForUser: e.target.value })
+                      }
+                      placeholder="Enter current password to verify identity"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      New User ID / Username
+                    </label>
+                    <input
+                      type="text"
+                      value={credForm.newUsername}
+                      onChange={(e) =>
+                        setCredForm({ ...credForm, newUsername: e.target.value })
+                      }
+                      placeholder={`Current: ${admin?.username || 'admin'}`}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 font-mono"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Can be alphanumeric (e.g. 6351521549, admin_gecr, or custom ID).
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      New Administrator Email (Optional)
+                    </label>
+                    <input
+                      type="email"
+                      value={credForm.newEmail}
+                      onChange={(e) =>
+                        setCredForm({ ...credForm, newEmail: e.target.value })
+                      }
+                      placeholder={`Current: ${admin?.email || 'admin@placementportal.edu'}`}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600"
+                    />
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={userUpdating}
+                      className="w-full sm:w-auto px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl font-semibold shadow-2xs transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                      <span>{userUpdating ? 'Updating User ID...' : 'Save User ID Changes'}</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            {/* Card B: Change Password */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 pb-3 mb-4 border-b border-slate-100">
+                  <KeyRound className="w-4 h-4 text-blue-700" />
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Change Administrator Password
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                  Enter your current password and choose a strong new password of at least 8 characters.
+                </p>
+
+                <form onSubmit={handleUpdateAdminPassword} className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      Current Password <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={credForm.currentPasswordForPass}
+                      onChange={(e) =>
+                        setCredForm({ ...credForm, currentPasswordForPass: e.target.value })
+                      }
+                      placeholder="Enter current password"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      New Password <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      minLength={8}
+                      value={credForm.newPassword}
+                      onChange={(e) =>
+                        setCredForm({ ...credForm, newPassword: e.target.value })
+                      }
+                      placeholder="Minimum 8 characters"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600"
+                    />
+                    {/* Live Strength Meter */}
+                    {credForm.newPassword && (
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                          <div
+                            className={`h-full transition-all duration-300 ${
+                              credForm.newPassword.length < 8
+                                ? 'w-1/3 bg-rose-500'
+                                : credForm.newPassword.length < 12
+                                ? 'w-2/3 bg-amber-500'
+                                : 'w-full bg-emerald-500'
+                            }`}
+                          />
+                        </div>
+                        <span className="text-[10px] font-semibold text-slate-500">
+                          {credForm.newPassword.length < 8
+                            ? 'Too short'
+                            : credForm.newPassword.length < 12
+                            ? 'Good'
+                            : 'Strong'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block font-bold uppercase tracking-wider text-slate-700 mb-1">
+                      Confirm New Password <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={credForm.confirmPassword}
+                      onChange={(e) =>
+                        setCredForm({ ...credForm, confirmPassword: e.target.value })
+                      }
+                      placeholder="Repeat new password exactly"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600"
+                    />
+                    {credForm.confirmPassword && (
+                      <p
+                        className={`text-[10px] font-semibold mt-1 ${
+                          credForm.newPassword === credForm.confirmPassword
+                            ? 'text-emerald-600'
+                            : 'text-rose-600'
+                        }`}
+                      >
+                        {credForm.newPassword === credForm.confirmPassword
+                          ? '✓ Passwords match'
+                          : '✗ Passwords do not match'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={passUpdating}
+                      className="w-full sm:w-auto px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl font-semibold shadow-2xs transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>{passUpdating ? 'Updating Password...' : 'Save New Password'}</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          {/* Security Architecture Box */}
+          <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 text-xs text-slate-600 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-slate-900">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>GECRPlacement Security & Storage Standard</span>
+            </div>
+            <ul className="list-disc pl-5 space-y-1 text-slate-500 leading-relaxed">
+              <li>Passwords are encrypted using one-way bcrypt cryptographic hashing with automatic salt generation.</li>
+              <li>Passwords are never transmitted in logs, returned in API payloads, or displayed in plaintext.</li>
+              <li>Old passwords cannot be reused, and previous session tokens are automatically validated.</li>
+              <li>Administrator registration is private and strictly protected by session authentication.</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
       {/* --- MODAL: Upload Learning Material --- */}
       {showMaterialModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4">
@@ -1491,6 +2089,53 @@ export const AdminDashboardPage = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL: Confirm Delete Company --- */}
+      {companyToDelete && (
+        <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="p-2.5 rounded-full bg-rose-50 border border-rose-100">
+                <AlertTriangle className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Delete Company?</h3>
+                <p className="text-xs text-slate-500">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to permanently delete <strong className="text-slate-900">{companyToDelete.name}</strong>? All associated interview experiences, interview rounds, and questions for this company will also be permanently removed from the database.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setCompanyToDelete(null)}
+                disabled={deletingCompany}
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteCompany}
+                disabled={deletingCompany}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-2xs cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {deletingCompany ? (
+                  <span>Deleting...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Yes, Delete Company</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

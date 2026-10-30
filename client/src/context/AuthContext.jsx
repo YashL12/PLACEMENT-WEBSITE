@@ -47,6 +47,10 @@ export const AuthProvider = ({ children }) => {
     setAdmin(null);
   };
 
+  const updateAdmin = (updatedData) => {
+    setAdmin((prev) => ({ ...prev, ...updatedData }));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -56,6 +60,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!token,
         login,
         logout,
+        updateAdmin,
       }}
     >
       {children}

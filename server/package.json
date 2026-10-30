@@ -7,6 +7,10 @@
     "start": "node src/server.js",
     "dev": "node src/server.js",
     "import-data": "node scripts/import-placement-data.js",
+    "seed-coding": "node scripts/seed-coding-questions.js",
+    "seed-coding-dry": "node scripts/seed-coding-questions.js --dry-run",
+    "import-excel": "node scripts/import-excel-questions.js",
+    "import-excel-dry": "node scripts/import-excel-questions.js --dry-run",
     "test": "node scripts/test-api.js"
   },
   "dependencies": {
@@ -22,6 +26,7 @@
     "mammoth": "^1.9.0",
     "mongoose": "^8.9.5",
     "multer": "^2.4.0",
-    "pdf-parse": "^2.4.5"
+    "pdf-parse": "^2.4.5",
+    "xlsx": "^0.18.5"
   }
 }

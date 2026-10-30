@@ -3,6 +3,7 @@ const path = require('path');
 const LearningMaterial = require('../models/LearningMaterial');
 const Company = require('../models/Company');
 const { uploadDir } = require('../middleware/upload');
+const { serverCache } = require('../utils/cache');
 
 // @desc    Get all learning materials with search, category & company filters
 // @route   GET /api/learning-materials
@@ -17,6 +18,12 @@ const getLearningMaterials = async (req, res, next) => {
       limit = 20,
       includeUnpublished = 'false',
     } = req.query;
+
+    const cacheKey = `materials:${search}:${category}:${company}:${page}:${limit}:${includeUnpublished}`;
+    const cached = serverCache.get(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
 
     const query = {};
 
@@ -57,7 +64,7 @@ const getLearningMaterials = async (req, res, next) => {
       .limit(limitNum)
       .lean();
 
-    res.json({
+    const payload = {
       success: true,
       data: {
         materials,
@@ -68,7 +75,10 @@ const getLearningMaterials = async (req, res, next) => {
           pages: Math.ceil(total / limitNum) || 1,
         },
       },
-    });
+    };
+
+    serverCache.set(cacheKey, payload, 60 * 1000);
+    res.json(payload);
   } catch (error) {
     next(error);
   }
@@ -191,6 +201,8 @@ const createLearningMaterial = async (req, res, next) => {
       uploadedBy: req.admin ? req.admin._id : null,
     });
 
+    serverCache.invalidatePrefix('materials');
+
     res.status(201).json({
       success: true,
       data: material,
@@ -273,6 +285,8 @@ const updateLearningMaterial = async (req, res, next) => {
 
     await material.save();
 
+    serverCache.invalidatePrefix('materials');
+
     res.json({
       success: true,
       data: material,
@@ -310,6 +324,8 @@ const deleteLearningMaterial = async (req, res, next) => {
     }
 
     await LearningMaterial.findByIdAndDelete(id);
+
+    serverCache.invalidatePrefix('materials');
 
     res.json({
       success: true,

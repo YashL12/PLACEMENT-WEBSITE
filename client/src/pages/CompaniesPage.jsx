@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Building2, SearchX, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { Building2, SearchX, ChevronLeft, ChevronRight, Search, X, AlertCircle, RotateCcw } from 'lucide-react';
 import { api } from '../services/api';
 import { CompanyCard } from '../components/CompanyCard';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { CompanyCardSkeleton } from '../components/CompanyCardSkeleton';
 import { EmptyState } from '../components/EmptyState';
 
 export const CompaniesPage = () => {
@@ -18,6 +18,31 @@ export const CompaniesPage = () => {
   const [companies, setCompanies] = useState([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 12, pages: 1 });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchCompanies = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await api.getCompanies({
+        search: searchQuery,
+        page: currentPage,
+        limit: 12,
+      });
+
+      if (res.success && res.data) {
+        setCompanies(res.data.companies || []);
+        setPagination(res.data.pagination || { total: 0, page: 1, limit: 12, pages: 1 });
+      } else {
+        setError(res.message || 'Failed to retrieve companies');
+      }
+    } catch (err) {
+      console.error('Failed to load companies:', err);
+      setError(err.message || 'Failed to load company directory. Please check server connectivity.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     setSearchQuery(searchQueryParam);
@@ -25,26 +50,6 @@ export const CompaniesPage = () => {
   }, [searchQueryParam, pageQueryParam]);
 
   useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        setLoading(true);
-        const res = await api.getCompanies({
-          search: searchQuery,
-          page: currentPage,
-          limit: 12,
-        });
-
-        if (res.success && res.data) {
-          setCompanies(res.data.companies);
-          setPagination(res.data.pagination);
-        }
-      } catch (error) {
-        console.error('Failed to load companies:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCompanies();
   }, [searchQuery, currentPage]);
 
@@ -142,9 +147,30 @@ export const CompaniesPage = () => {
           )}
         </div>
 
-        {/* Companies grid or empty state */}
+        {/* Error state with retry */}
+        {error && (
+          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-2.5 text-xs font-medium">
+              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+            <button
+              onClick={fetchCompanies}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-rose-200 hover:bg-rose-100/50 text-rose-800 text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-2xs"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Retry</span>
+            </button>
+          </div>
+        )}
+
+        {/* Companies grid or skeleton state */}
         {loading ? (
-          <LoadingSpinner message="Searching placement records..." />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[1, 2, 3, 4, 5, 6].map((idx) => (
+              <CompanyCardSkeleton key={idx} />
+            ))}
+          </div>
         ) : companies.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

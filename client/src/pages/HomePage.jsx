@@ -1,63 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
-  Search,
-  Building2,
-  BookOpen,
-  ArrowRight,
-  HelpCircle,
-  GraduationCap,
-  TrendingUp,
-  Users,
-  Zap,
-  ChevronRight,
-  Star,
-  FileText,
+  Search, Building2, BookOpen, ArrowRight, ArrowUpRight,
+  HelpCircle, GraduationCap, Users, Code2, Database,
+  ChevronRight, Star, FileText, Shield,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { CompanyCard } from '../components/CompanyCard';
+import { CompanyCardSkeleton } from '../components/CompanyCardSkeleton';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
-// Quick company chips
-const PRIORITY_COMPANIES = ['Kevit', 'TSS', 'RKIT', 'GN Websoft', 'TatvaSoft', 'eSparkBiz', 'Prominent Pixel', 'Gateway'];
+const PRIORITY_COMPANIES = ['Kevit', 'TSS', 'RKIT', 'TatvaSoft', 'eSparkBiz', 'Gateway', 'Prominent Pixel', 'GN Websoft'];
 
-// Feature pillars
-const PILLARS = [
+const FEATURES = [
+  {
+    icon: Code2,
+    iconBg: '#eff6ff',
+    iconColor: '#2563eb',
+    title: 'DSA & SQL Practice',
+    desc: 'Curated collection of placement coding questions from real GECR recruiter drives. Solve directly on verified platforms.',
+    href: '/practice',
+    cta: 'Start Practicing',
+    ctaColor: '#2563eb',
+  },
   {
     icon: Building2,
-    label: 'Company Directory',
-    description: 'Priority-ordered recruiting companies with complete interview timelines, selection criteria, and round-by-round breakdowns.',
+    iconBg: '#f0f4ff',
+    iconColor: '#4f46e5',
+    title: 'Company Directory',
+    desc: 'Priority-ordered recruiting companies with complete interview timelines, selection criteria, and round breakdowns.',
     href: '/companies',
     cta: 'Browse Companies',
-    color: 'blue',
-    bg: 'bg-blue-50',
-    iconColor: 'text-blue-600',
-    hoverBg: 'hover:bg-blue-600',
-    border: 'hover:border-blue-300',
+    ctaColor: '#4f46e5',
   },
   {
     icon: HelpCircle,
-    label: 'Interview Questions',
-    description: 'Over 1,400+ real coding problems, technical MCQs, algorithmic challenges, and HR round questions reported by GECR students.',
+    iconBg: '#fdf4ff',
+    iconColor: '#9333ea',
+    title: 'Interview Questions',
+    desc: '1,400+ real coding problems, technical MCQs, and HR questions reported by GECR Computer Dept students.',
     href: '/companies',
     cta: 'Explore Questions',
-    color: 'violet',
-    bg: 'bg-violet-50',
-    iconColor: 'text-violet-600',
-    hoverBg: 'hover:bg-violet-600',
-    border: 'hover:border-violet-300',
+    ctaColor: '#9333ea',
   },
   {
     icon: BookOpen,
-    label: 'Study Resources',
-    description: 'Curated DSA cheatsheets, OS & DBMS guides, aptitude prep sheets, and company-specific archives from faculty and alumni.',
+    iconBg: '#f0fdf4',
+    iconColor: '#16a34a',
+    title: 'Study Resources',
+    desc: 'Curated DSA cheatsheets, OS & DBMS guides, aptitude prep sheets, and company-specific study materials.',
     href: '/learning-material',
     cta: 'View Resources',
-    color: 'emerald',
-    bg: 'bg-emerald-50',
-    iconColor: 'text-emerald-600',
-    hoverBg: 'hover:bg-emerald-600',
-    border: 'hover:border-emerald-300',
+    ctaColor: '#16a34a',
   },
 ];
 
@@ -68,322 +62,458 @@ export const HomePage = () => {
     companiesCount: 26,
     experiencesCount: 76,
     questionsCount: 1426,
-    learningMaterialsCount: 3,
+    codingQuestionsCount: 0,
   });
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const loadHomeData = async () => {
+    const load = async () => {
       try {
         setLoading(true);
-        const [statsRes, compRes, matRes] = await Promise.all([
+        const [statsRes, compRes] = await Promise.all([
           api.getPublicStats().catch(() => ({ success: false })),
           api.getCompanies({ limit: 6 }).catch(() => ({ success: false })),
-          api.getLearningMaterials({ limit: 3 }).catch(() => ({ success: false })),
         ]);
-
         if (statsRes.success && statsRes.data) {
           setStats({
             companiesCount: statsRes.data.companiesCount || 26,
             experiencesCount: statsRes.data.experiencesCount || 76,
             questionsCount: statsRes.data.questionsCount || 1426,
-            learningMaterialsCount: matRes.data?.pagination?.total || 3,
+            codingQuestionsCount: statsRes.data.codingQuestionsCount || 0,
           });
         }
-
         if (compRes.success && compRes.data?.companies) {
           setFeaturedCompanies(compRes.data.companies);
         }
-      } catch (error) {
-        console.error('Error loading homepage data:', error);
+      } catch (e) {
+        console.error(e);
       } finally {
         setLoading(false);
       }
     };
-
-    loadHomeData();
+    load();
   }, []);
 
-  const handleSearchSubmit = (e) => {
+  const handleSearch = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/companies?search=${encodeURIComponent(searchQuery.trim())}`);
-    } else {
-      navigate('/companies');
-    }
+    navigate(searchQuery.trim() ? `/companies?search=${encodeURIComponent(searchQuery.trim())}` : '/companies');
   };
 
-  const statItems = [
-    { value: stats.companiesCount, label: 'Recruiting Companies', icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { value: stats.experiencesCount, label: 'Interview Experiences', icon: FileText, color: 'text-violet-600', bg: 'bg-violet-50' },
-    { value: `${stats.questionsCount}+`, label: 'Interview Questions', icon: HelpCircle, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { value: stats.learningMaterialsCount, label: 'Study Resources', icon: BookOpen, color: 'text-amber-600', bg: 'bg-amber-50' },
+  const STATS = [
+    { value: stats.companiesCount,         label: 'Recruiting Companies',        icon: Building2, color: '#2563eb', bg: '#eff6ff' },
+    { value: stats.experiencesCount,       label: 'Interview Experiences',        icon: FileText,  color: '#7c3aed', bg: '#f5f3ff' },
+    { value: `${stats.questionsCount}+`,   label: 'Company Interview Questions',  icon: HelpCircle, color: '#0369a1', bg: '#f0f9ff' },
+    { value: `${stats.codingQuestionsCount}+`, label: 'Practice Questions',       icon: Code2,     color: '#059669', bg: '#f0fdf4' },
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg-page)' }}>
-
-      {/* ─── Hero Section ─── */}
+    <div style={{ background: '#f9fafb' }}>
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section
-        className="relative overflow-hidden pt-12 pb-16 px-4 sm:px-6 lg:px-8"
-        style={{ background: 'linear-gradient(160deg, #eff6ff 0%, #f8fafc 50%, #ffffff 100%)' }}
-        aria-label="Hero section"
+        style={{
+          background: 'linear-gradient(165deg, #f0f6ff 0%, #f9fafb 55%, #fff 100%)',
+          borderBottom: '1px solid #e5e7eb',
+          padding: '3.5rem 0 3rem',
+        }}
       >
-        {/* Subtle background decoration */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-          <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl" />
-          <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-indigo-100/30 rounded-full blur-3xl" />
-        </div>
-
-        <div className="relative max-w-4xl mx-auto text-center">
-          {/* Eyebrow badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-blue-200 text-blue-700 text-xs font-semibold mb-7 shadow-sm">
-            <img src="/gecr-logo.png" alt="GECR" className="w-4 h-4 object-contain" aria-hidden="true" />
-            <span>GEC Rajkot · Computer Department</span>
-            <span className="w-1 h-1 rounded-full bg-blue-400" aria-hidden="true" />
-            <span className="text-blue-500">Placement Portal</span>
-          </div>
-
-          {/* Main headline */}
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 mb-5 leading-tight tracking-tight">
-            Ace Your Placement{' '}
-            <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #1d4ed8, #3b82f6)' }}>
-              with Real Insights
-            </span>
-          </h1>
-
-          <p className="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Explore verified interview experiences, authentic question banks, company-wise selection
-            processes, and curated study materials — all gathered from GECR students.
-          </p>
-
-          {/* Search Bar */}
-          <form
-            onSubmit={handleSearchSubmit}
-            className="max-w-2xl mx-auto"
-            role="search"
-            aria-label="Search companies"
-          >
-            <div className="flex items-center bg-white rounded-2xl shadow-md border border-slate-200 focus-within:border-blue-400 focus-within:shadow-lg focus-within:shadow-blue-100 transition-all duration-200 p-1.5">
-              <div className="pl-3 text-slate-400 flex items-center pointer-events-none flex-shrink-0" aria-hidden="true">
-                <Search className="w-5 h-5" />
-              </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search companies — Kevit, TSS, RKIT, TatvaSoft..."
-                className="flex-1 px-3 py-2.5 text-slate-900 placeholder-slate-400 text-sm bg-transparent focus:outline-none"
-                aria-label="Search companies by name"
-              />
-              <button
-                type="submit"
-                className="flex-shrink-0 px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all duration-150 flex items-center gap-2 cursor-pointer"
-                style={{ background: 'linear-gradient(135deg, #1e40af, #2563eb)' }}
-              >
-                <span className="hidden sm:inline">Search</span>
-                <ArrowRight className="w-4 h-4" aria-hidden="true" />
-              </button>
+        <div className="container">
+          <div style={{ maxWidth: 680, margin: '0 auto', textAlign: 'center' }}>
+            {/* Eyebrow */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+              padding: '0.3rem 0.875rem', borderRadius: 999,
+              background: '#fff', border: '1px solid #bfdbfe',
+              color: '#1d4ed8', fontSize: '0.75rem', fontWeight: 600,
+              marginBottom: '1.5rem',
+              boxShadow: '0 1px 4px rgb(0 0 0 / 0.06)',
+            }}>
+              <img src="/gecr-logo.png" alt="GECR" width="14" height="14" style={{ objectFit: 'contain' }} />
+              <span>GEC Rajkot · Computer Department</span>
+              <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#93c5fd' }} />
+              <span style={{ color: '#60a5fa' }}>Placement Portal</span>
             </div>
-          </form>
 
-          {/* Quick company chips */}
-          <div className="flex items-center justify-center gap-2 flex-wrap mt-5" aria-label="Popular companies">
-            <span className="text-xs text-slate-400 font-medium">Priority:</span>
-            {PRIORITY_COMPANIES.map((name) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => navigate(`/companies?search=${encodeURIComponent(name)}`)}
-                className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 text-slate-600 text-xs font-medium transition-all duration-100 shadow-xs cursor-pointer"
+            {/* Headline */}
+            <h1 style={{
+              fontSize: 'clamp(2rem, 5vw, 3.25rem)',
+              fontWeight: 900,
+              color: '#0f172a',
+              lineHeight: 1.12,
+              letterSpacing: '-0.035em',
+              marginBottom: '1rem',
+            }}>
+              Ace Your Placement{' '}
+              <span style={{ color: '#1a56db' }}>with Real Insights</span>
+            </h1>
+
+            <p style={{
+              fontSize: '1.0625rem', color: '#6b7280', lineHeight: 1.7,
+              marginBottom: '2rem', maxWidth: 520, margin: '0 auto 2rem',
+            }}>
+              Verified interview experiences, authentic question banks, company-wise
+              selection processes — all gathered from GECR students.
+            </p>
+
+            {/* Search */}
+            <form onSubmit={handleSearch} style={{ maxWidth: 540, margin: '0 auto 1.25rem' }}>
+              <div style={{
+                display: 'flex', alignItems: 'center',
+                background: '#fff', borderRadius: 14,
+                border: '1.5px solid #e5e7eb',
+                boxShadow: '0 2px 12px rgb(0 0 0 / 0.07)',
+                padding: '0.375rem 0.375rem 0.375rem 1rem',
+                transition: 'border-color 0.15s, box-shadow 0.15s',
+              }}
+                onFocus={e => { e.currentTarget.style.borderColor = '#60a5fa'; e.currentTarget.style.boxShadow = '0 2px 12px rgb(0 0 0 / 0.07), 0 0 0 3px rgb(96 165 250 / 0.15)'; }}
+                onBlur={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.boxShadow = '0 2px 12px rgb(0 0 0 / 0.07)'; }}
               >
-                {name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Stats Row */}
-        <div className="relative max-w-4xl mx-auto mt-14">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            {statItems.map((stat, i) => {
-              const Icon = stat.icon;
-              return (
-                <div
-                  key={i}
-                  className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 text-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                <Search style={{ width: 18, height: 18, color: '#9ca3af', flexShrink: 0, marginRight: '0.5rem' }} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search companies — TSS, Kevit, TatvaSoft..."
+                  style={{
+                    flex: 1, border: 'none', outline: 'none', background: 'transparent',
+                    fontSize: '0.9rem', color: '#111827',
+                  }}
+                  aria-label="Search companies"
+                />
+                <button type="submit" style={{
+                  flexShrink: 0,
+                  display: 'flex', alignItems: 'center', gap: '0.375rem',
+                  padding: '0.5rem 1rem', borderRadius: 10,
+                  background: '#1a56db', color: '#fff',
+                  border: 'none', fontSize: '0.875rem', fontWeight: 600,
+                  cursor: 'pointer', transition: 'background 0.15s',
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#1e40af'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#1a56db'}
                 >
-                  <div className={`w-9 h-9 ${stat.bg} rounded-xl flex items-center justify-center mx-auto mb-3`}>
-                    <Icon className={`w-4.5 h-4.5 ${stat.color}`} aria-hidden="true" />
+                  <span className="hide-mobile">Search</span>
+                  <ArrowRight style={{ width: 15, height: 15 }} />
+                </button>
+              </div>
+            </form>
+
+            {/* Quick chips */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'center' }}>
+              <span style={{ fontSize: '0.75rem', color: '#9ca3af', alignSelf: 'center' }}>Priority:</span>
+              {PRIORITY_COMPANIES.map(name => (
+                <button
+                  key={name}
+                  onClick={() => navigate(`/companies?search=${encodeURIComponent(name)}`)}
+                  style={{
+                    padding: '0.275rem 0.7rem', borderRadius: 8,
+                    background: '#fff', border: '1px solid #e5e7eb',
+                    fontSize: '0.75rem', fontWeight: 500, color: '#374151',
+                    cursor: 'pointer', transition: 'all 0.12s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#93c5fd'; e.currentTarget.style.color = '#1d4ed8'; e.currentTarget.style.background = '#eff6ff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#fff'; }}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '0.875rem', maxWidth: 700, margin: '3rem auto 0',
+          }}
+            className="stats-grid"
+          >
+            {STATS.map((s, i) => {
+              const Icon = s.icon;
+              return (
+                <div key={i} style={{
+                  background: '#fff', border: '1px solid #e5e7eb',
+                  borderRadius: 14, padding: '1rem 1.25rem',
+                  display: 'flex', alignItems: 'center', gap: '0.875rem',
+                  boxShadow: '0 1px 3px rgb(0 0 0 / 0.05)',
+                  transition: 'box-shadow 0.15s, transform 0.15s',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgb(0 0 0 / 0.08)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgb(0 0 0 / 0.05)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                >
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10,
+                    background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>
+                    <Icon style={{ width: 18, height: 18, color: s.color }} />
                   </div>
-                  <div className={`text-2xl sm:text-3xl font-extrabold ${stat.color} leading-none mb-1`}>
-                    {stat.value}
+                  <div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: s.color, lineHeight: 1, letterSpacing: '-0.04em' }}>
+                      {s.value}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, marginTop: 2, lineHeight: 1.3 }}>
+                      {s.label}
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-500 font-medium leading-tight">{stat.label}</div>
                 </div>
               );
             })}
           </div>
+          <style>{`
+            @media (min-width: 640px) { .stats-grid { grid-template-columns: repeat(4, 1fr) !important; } }
+          `}</style>
         </div>
       </section>
 
-      {/* ─── Platform Pillars ─── */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto" aria-label="Platform features">
-        {/* Section header */}
-        <div className="text-center mb-10">
-          <div className="section-eyebrow mx-auto mb-4">
-            <Zap className="w-3 h-3" aria-hidden="true" />
-            What's Inside
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Everything you need to crack placements
-          </h2>
-          <p className="text-sm text-slate-500 mt-3 max-w-xl mx-auto">
-            Three powerful resources built from real GECR student experiences to help you prepare smarter.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {PILLARS.map((pillar, idx) => {
-            const Icon = pillar.icon;
-            return (
-              <Link
-                key={idx}
-                to={pillar.href}
-                className="group relative bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg transition-all duration-250 overflow-hidden"
-                style={{ '--hover-color': pillar.color }}
-              >
-                {/* Hover gradient overlay */}
-                <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-250 rounded-2xl`}
-                  style={{ background: `linear-gradient(135deg, ${pillar.color === 'blue' ? '#eff6ff' : pillar.color === 'violet' ? '#f5f3ff' : '#f0fdf4'} 0%, transparent 60%)` }}
-                  aria-hidden="true"
-                />
-
-                <div className="relative">
-                  {/* Icon */}
-                  <div className={`w-12 h-12 ${pillar.bg} rounded-xl flex items-center justify-center mb-5 transition-colors duration-200 group-hover:scale-110 transform`}>
-                    <Icon className={`w-6 h-6 ${pillar.iconColor}`} aria-hidden="true" />
-                  </div>
-
-                  <h3 className="text-base font-bold text-slate-900 mb-2 group-hover:text-blue-700 transition-colors">
-                    {pillar.label}
-                  </h3>
-                  <p className="text-sm text-slate-500 leading-relaxed mb-5">
-                    {pillar.description}
-                  </p>
-
-                  <span className={`inline-flex items-center gap-1 text-xs font-semibold ${pillar.iconColor} transition-all`}>
-                    <span>{pillar.cta}</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ─── Featured Companies ─── */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto" aria-label="Featured companies">
-        {/* Section header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-          <div>
-            <div className="section-eyebrow mb-3">
-              <Star className="w-3 h-3 fill-blue-600" aria-hidden="true" />
-              Priority Companies
+      {/* ── Features ─────────────────────────────────────────────────────── */}
+      <section style={{ padding: '4rem 0', background: '#fff', borderBottom: '1px solid #e5e7eb' }}>
+        <div className="container">
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <div className="eyebrow" style={{ marginBottom: '0.875rem' }}>
+              What's Inside
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-              Recruiting Companies &amp; Processes
+            <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 800, color: '#0f172a', marginBottom: '0.625rem' }}>
+              Everything you need to crack placements
             </h2>
-            <p className="text-sm text-slate-500 mt-1.5">
-              Real multi-round interview breakdowns, selection criteria, and candidate tips.
+            <p style={{ color: '#6b7280', fontSize: '0.9375rem', maxWidth: 500, margin: '0 auto' }}>
+              Comprehensive resources built from real GECR student experiences.
             </p>
           </div>
-          <Link
-            to="/companies"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors flex-shrink-0"
-          >
-            <span>View All ({stats.companiesCount})</span>
-            <ArrowRight className="w-4 h-4" aria-hidden="true" />
-          </Link>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1rem' }} className="features-grid">
+            {FEATURES.map((f, i) => {
+              const Icon = f.icon;
+              return (
+                <Link key={i} to={f.href} style={{
+                  display: 'block',
+                  background: '#fff', border: '1px solid #e5e7eb',
+                  borderRadius: 16, padding: '1.5rem',
+                  textDecoration: 'none', color: 'inherit',
+                  transition: 'all 0.2s',
+                  position: 'relative', overflow: 'hidden',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgb(0 0 0 / 0.08)'; e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                >
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 12,
+                    background: f.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginBottom: '1.125rem',
+                  }}>
+                    <Icon style={{ width: 22, height: 22, color: f.iconColor }} />
+                  </div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>
+                    {f.title}
+                  </h3>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.65, marginBottom: '1.25rem' }}>
+                    {f.desc}
+                  </p>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                    fontSize: '0.8125rem', fontWeight: 600, color: f.ctaColor,
+                  }}>
+                    {f.cta} <ArrowRight style={{ width: 14, height: 14 }} />
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+          <style>{`
+            @media (min-width: 640px)  { .features-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+            @media (min-width: 1024px) { .features-grid { grid-template-columns: repeat(4, 1fr) !important; } }
+          `}</style>
         </div>
-
-        {/* Company cards */}
-        {loading ? (
-          <LoadingSpinner message="Loading companies from database..." />
-        ) : featuredCompanies.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {featuredCompanies.map((company) => (
-              <CompanyCard key={company._id} company={company} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-14 bg-white rounded-2xl border border-slate-200 text-slate-400 text-sm">
-            No companies found in database.
-          </div>
-        )}
-
-        {/* Browse all CTA */}
-        {!loading && featuredCompanies.length > 0 && (
-          <div className="mt-8 text-center">
-            <Link
-              to="/companies"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors shadow-sm"
-            >
-              <span>View All {stats.companiesCount} Companies</span>
-              <ChevronRight className="w-4 h-4" aria-hidden="true" />
-            </Link>
-          </div>
-        )}
       </section>
 
-      {/* ─── Quick Links / Alumni CTA ─── */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mb-8" aria-label="Additional resources">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          {/* Alumni Card */}
-          <Link
-            to="/alumni"
-            className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg hover:border-violet-200 transition-all duration-200 flex items-start gap-4"
-          >
-            <div className="w-12 h-12 bg-violet-50 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-violet-100 transition-colors">
-              <Users className="w-6 h-6 text-violet-600" aria-hidden="true" />
-            </div>
+      {/* ── Practice CTA ──────────────────────────────────────────────────── */}
+      <section style={{ padding: '3.5rem 0', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+        <div className="container">
+          <div style={{
+            background: 'linear-gradient(135deg, #0f2d5e 0%, #1a56db 100%)',
+            borderRadius: 20, padding: '2.5rem 2rem',
+            display: 'flex', flexDirection: 'column', gap: '1.5rem',
+          }} className="practice-cta">
             <div>
-              <h3 className="text-base font-bold text-slate-900 mb-1.5 group-hover:text-violet-700 transition-colors">
-                Alumni Network
-              </h3>
-              <p className="text-sm text-slate-500 mb-3 leading-relaxed">
-                Connect with GECR Computer Department graduates at top companies for mentorship and guidance.
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0.25rem 0.75rem', borderRadius: 999, background: 'rgba(255,255,255,0.15)',
+                fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', color: '#93c5fd',
+                textTransform: 'uppercase', marginBottom: '0.875rem',
+              }}>
+                Practice Arena
+              </div>
+              <h2 style={{ fontSize: 'clamp(1.375rem, 3vw, 1.875rem)', fontWeight: 800, color: '#fff', marginBottom: '0.625rem', letterSpacing: '-0.025em' }}>
+                Practice DSA & SQL questions<br />from real GECR placements
+              </h2>
+              <p style={{ color: '#93c5fd', fontSize: '0.9375rem', lineHeight: 1.65 }}>
+                Curated problems from LeetCode, GeeksforGeeks, HackerRank and more —
+                filtered by company, topic, and difficulty.
               </p>
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-violet-600">
-                <span>Browse Alumni</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
-              </span>
             </div>
-          </Link>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <Link to="/practice" style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0.6875rem 1.5rem', borderRadius: 12,
+                background: '#fff', color: '#1a56db',
+                fontSize: '0.875rem', fontWeight: 700,
+                textDecoration: 'none', transition: 'all 0.15s',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'translateY(0)'; }}
+              >
+                <Code2 style={{ width: 15, height: 15 }} />
+                <span>Browse All Practice</span>
+              </Link>
+              <Link to="/practice/dsa" style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0.6875rem 1.25rem', borderRadius: 12,
+                background: 'rgba(255,255,255,0.12)', color: '#e0f2fe',
+                fontSize: '0.875rem', fontWeight: 600,
+                textDecoration: 'none', transition: 'all 0.15s',
+                border: '1px solid rgba(255,255,255,0.2)',
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+              >
+                DSA Problems
+              </Link>
+              <Link to="/practice/sql" style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0.6875rem 1.25rem', borderRadius: 12,
+                background: 'rgba(255,255,255,0.12)', color: '#e0f2fe',
+                fontSize: '0.875rem', fontWeight: 600,
+                textDecoration: 'none', transition: 'all 0.15s',
+                border: '1px solid rgba(255,255,255,0.2)',
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+              >
+                SQL Practice
+              </Link>
+            </div>
+          </div>
+          <style>{`
+            @media (min-width: 768px) {
+              .practice-cta { flex-direction: row !important; align-items: center; justify-content: space-between; }
+              .practice-cta > div:first-child { flex: 1; }
+              .practice-cta > div:last-child { flex-shrink: 0; flex-direction: column; align-items: flex-start; }
+            }
+          `}</style>
+        </div>
+      </section>
 
-          {/* Study Resources Card */}
-          <Link
-            to="/learning-material"
-            className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg hover:border-emerald-200 transition-all duration-200 flex items-start gap-4"
-          >
-            <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 transition-colors">
-              <TrendingUp className="w-6 h-6 text-emerald-600" aria-hidden="true" />
-            </div>
+      {/* ── Featured Companies ────────────────────────────────────────────── */}
+      <section style={{ padding: '4rem 0 3rem', background: '#fff' }}>
+        <div className="container">
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start',
+            justifyContent: 'space-between', gap: '1rem', marginBottom: '2rem',
+          }}>
             <div>
-              <h3 className="text-base font-bold text-slate-900 mb-1.5 group-hover:text-emerald-700 transition-colors">
-                Preparation Resources
-              </h3>
-              <p className="text-sm text-slate-500 mb-3 leading-relaxed">
-                Download DSA sheets, aptitude guides, OS/DBMS notes, and SQL prep sets curated for placements.
+              <div className="eyebrow" style={{ marginBottom: '0.625rem' }}>
+                <Star style={{ width: 10, height: 10 }} />
+                Priority Companies
+              </div>
+              <h2 style={{ fontSize: 'clamp(1.375rem, 3vw, 1.75rem)', fontWeight: 800, color: '#0f172a', marginBottom: '0.375rem' }}>
+                Recruiting Companies & Processes
+              </h2>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+                Real multi-round breakdowns, selection criteria, and candidate tips.
               </p>
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                <span>View Resources</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
-              </span>
             </div>
-          </Link>
+            <Link to="/companies" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
+              fontSize: '0.875rem', fontWeight: 600, color: '#2563eb',
+              textDecoration: 'none', flexShrink: 0,
+            }}>
+              View All ({stats.companiesCount}) <ChevronRight style={{ width: 14, height: 14 }} />
+            </Link>
+          </div>
+
+          {loading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1rem' }} className="companies-grid">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <CompanyCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : featuredCompanies.length > 0 ? (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1rem' }} className="companies-grid">
+                {featuredCompanies.map(c => <CompanyCard key={c._id} company={c} />)}
+              </div>
+              <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+                <Link to="/companies" className="btn btn-navy">
+                  View All {stats.companiesCount} Companies
+                  <ChevronRight style={{ width: 15, height: 15 }} />
+                </Link>
+              </div>
+              <style>{`
+                @media (min-width: 640px)  { .companies-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+                @media (min-width: 1024px) { .companies-grid { grid-template-columns: repeat(3, 1fr) !important; } }
+              `}</style>
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              No companies found in database.
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── Secondary Links ───────────────────────────────────────────────── */}
+      <section style={{ padding: '3rem 0 4rem', background: '#f9fafb' }}>
+        <div className="container">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1rem' }} className="links-grid">
+            {/* Alumni */}
+            <Link to="/alumni" style={{
+              display: 'flex', alignItems: 'flex-start', gap: '1rem',
+              padding: '1.5rem', borderRadius: 16,
+              background: '#fff', border: '1px solid #e5e7eb',
+              textDecoration: 'none', color: 'inherit',
+              transition: 'all 0.2s',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgb(0 0 0 / 0.07)'; e.currentTarget.style.borderColor = '#c4b5fd'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)'; }}
+            >
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Users style={{ width: 22, height: 22, color: '#7c3aed' }} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.375rem' }}>Alumni Network</h3>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.6, marginBottom: '0.75rem' }}>
+                  Connect with GECR Computer Dept graduates at top companies for mentorship.
+                </p>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8125rem', fontWeight: 600, color: '#7c3aed' }}>
+                  Browse Alumni <ArrowRight style={{ width: 13, height: 13 }} />
+                </span>
+              </div>
+            </Link>
+
+            {/* Resources */}
+            <Link to="/learning-material" style={{
+              display: 'flex', alignItems: 'flex-start', gap: '1rem',
+              padding: '1.5rem', borderRadius: 16,
+              background: '#fff', border: '1px solid #e5e7eb',
+              textDecoration: 'none', color: 'inherit',
+              transition: 'all 0.2s',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgb(0 0 0 / 0.07)'; e.currentTarget.style.borderColor = '#86efac'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)'; }}
+            >
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <BookOpen style={{ width: 22, height: 22, color: '#16a34a' }} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.375rem' }}>Preparation Resources</h3>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.6, marginBottom: '0.75rem' }}>
+                  Download DSA sheets, aptitude guides, OS/DBMS notes, and SQL prep sets.
+                </p>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8125rem', fontWeight: 600, color: '#16a34a' }}>
+                  View Resources <ArrowRight style={{ width: 13, height: 13 }} />
+                </span>
+              </div>
+            </Link>
+          </div>
+          <style>{`
+            @media (min-width: 768px) { .links-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+          `}</style>
         </div>
       </section>
     </div>

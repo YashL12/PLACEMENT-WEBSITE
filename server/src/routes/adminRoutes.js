@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   login,
   getMe,
+  updateCredentials,
   getDashboardStats,
   getReviewQueue,
   resolveReview,
@@ -15,6 +16,7 @@ const { validateLogin } = require('../validators/companyValidator');
 // Auth routes
 router.post('/login', authLimiter, validateLogin, login);
 router.get('/me', protect, getMe);
+router.put('/credentials', protect, updateCredentials);
 
 // Management & stats routes
 router.get('/stats', protect, getDashboardStats);

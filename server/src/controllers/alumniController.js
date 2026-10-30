@@ -1,5 +1,6 @@
 const Alumni = require('../models/Alumni');
 const Company = require('../models/Company');
+const { serverCache } = require('../utils/cache');
 
 // Helper to validate LinkedIn URL format
 function isValidLinkedInUrl(url) {
@@ -19,6 +20,12 @@ const getAlumni = async (req, res, next) => {
       limit = 30,
       includeUnpublished = 'false',
     } = req.query;
+
+    const cacheKey = `alumni:${search}:${company}:${page}:${limit}:${includeUnpublished}`;
+    const cached = serverCache.get(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
 
     const query = {};
 
@@ -52,7 +59,7 @@ const getAlumni = async (req, res, next) => {
       .limit(limitNum)
       .lean();
 
-    res.json({
+    const payload = {
       success: true,
       data: {
         alumni: alumniList,
@@ -63,7 +70,10 @@ const getAlumni = async (req, res, next) => {
           pages: Math.ceil(total / limitNum) || 1,
         },
       },
-    });
+    };
+
+    serverCache.set(cacheKey, payload, 60 * 1000); // 1 min TTL
+    res.json(payload);
   } catch (error) {
     next(error);
   }
@@ -166,6 +176,8 @@ const createAlumni = async (req, res, next) => {
       createdBy: req.admin ? req.admin._id : null,
     });
 
+    serverCache.invalidatePrefix('alumni');
+
     res.status(201).json({
       success: true,
       data: alumni,
@@ -235,6 +247,8 @@ const updateAlumni = async (req, res, next) => {
 
     await alumni.save();
 
+    serverCache.invalidatePrefix('alumni');
+
     res.json({
       success: true,
       data: alumni,
@@ -259,6 +273,8 @@ const deleteAlumni = async (req, res, next) => {
         message: 'Alumni record not found',
       });
     }
+
+    serverCache.invalidatePrefix('alumni');
 
     res.json({
       success: true,
@@ -289,6 +305,8 @@ const toggleFeaturedAlumni = async (req, res, next) => {
       alumni.featuredOrder = 1;
     }
     await alumni.save();
+
+    serverCache.invalidatePrefix('alumni');
 
     res.json({
       success: true,

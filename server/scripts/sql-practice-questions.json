@@ -1,0 +1,404 @@
+[
+  {
+    "id": 0,
+    "question": "Show first name, last name, and gender of patients whose gender is 'M'",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 1,
+    "question": "Show first name and last name of patients who does not have allergies. (null)",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 2,
+    "question": "Show first name of patients that start with the letter 'C'",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 3,
+    "question": "Show first name and last name of patients that weight within the range of 100 to 120 (inclusive)",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 4,
+    "question": "Update the patients table for the allergies column. If the patient's allergies is null then replace it with 'NKA'",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 5,
+    "question": "Show first name and last name concatinated into one column to show their full name.",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 6,
+    "question": "Show first name, last name, and the <b>full</b> province name of each patient.<br><br> Example: 'Ontario' instead of 'ON'",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 23,
+    "question": "Show how many patients have a birth_date with 2010 as the birth year.",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 33,
+    "question": "Show the first_name, last_name, and height of the patient with the greatest height.",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 34,
+    "question": "Show all columns for patients who have one of the following patient_ids:<br>\\n1,45,534,879,1000",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 35,
+    "question": "Show the total number of admissions",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 41,
+    "question": "Show all the columns from admissions where the patient was admitted and discharged on the same day.",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 42,
+    "question": "Show the patient id and the total number of admissions for patient_id 579.",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 32,
+    "question": "Based on the cities that our patients live in, show unique cities that are in province_id 'NS'.",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 45,
+    "question": "Write a query to find the first_name, last name, and birth date of patients who has height greater than 160 and weight greater than 70",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 46,
+    "question": "Write a query to find list of patients first_name, last_name, and allergies where allergies are not null and are from the city of 'Hamilton'",
+    "mode": "easy",
+    "database": "hospital"
+  },
+  {
+    "id": 56,
+    "question": "Show the category_name and description from the categories table sorted by category_name.",
+    "mode": "easy",
+    "database": "northwind"
+  },
+  {
+    "id": 57,
+    "question": "Show all the contact_name, address, city of all customers which are not from 'Germany', 'Mexico', 'Spain'",
+    "mode": "easy",
+    "database": "northwind"
+  },
+  {
+    "id": 58,
+    "question": "Show order_date, shipped_date, customer_id, Freight of all orders placed on 2018 Feb 26",
+    "mode": "easy",
+    "database": "northwind"
+  },
+  {
+    "id": 59,
+    "question": "Show the employee_id, order_id, customer_id, required_date, shipped_date from all orders shipped later\\nthan the required date",
+    "mode": "easy",
+    "database": "northwind"
+  },
+  {
+    "id": 60,
+    "question": "Show all the even numbered Order_id from the orders table.",
+    "mode": "easy",
+    "database": "northwind"
+  },
+  {
+    "id": 61,
+    "question": "Show the city, company_name, contact_name of all customers from cities which contains the letter 'L' in the city name,\\nsorted by contact_name",
+    "mode": "easy",
+    "database": "northwind"
+  },
+  {
+    "id": 62,
+    "question": "Show the company_name, contact_name, fax number of all customers that has a fax number. (not null)",
+    "mode": "easy",
+    "database": "northwind"
+  },
+  {
+    "id": 63,
+    "question": "Show the first_name, last_name, hire_date of the most recently hired employee.",
+    "mode": "easy",
+    "database": "northwind"
+  },
+  {
+    "id": 64,
+    "question": "Show the average unit price rounded to 2 decimal places, the total units in stock, total discontinued products from the products table.",
+    "mode": "easy",
+    "database": "northwind"
+  },
+  {
+    "id": 7,
+    "question": "Show unique birth years from patients and order them by ascending.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 8,
+    "question": "Show unique first names from the patients table which only occurs once in the list.<br></br>For example, if two or more people are named 'John' in the first_name column then don't include their name in the output list. If only 1 person is named 'Leo' then include them in the output.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 9,
+    "question": "Show patient_id and first_name from patients where their first_name start and ends with 's' and is at least 6 characters long.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 10,
+    "question": "Show patient_id, first_name, last_name from patients whos diagnosis is 'Dementia'.<br><br>Primary diagnosis is stored in the admissions table.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 11,
+    "question": "Display every patient's first_name.<br> Order the list by the length of each name and then by alphabetically",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 12,
+    "question": "Show the total amount of male patients and the total amount of female patients in the patients table.<br>Display the two results in the same row.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 13,
+    "question": "Show first and last name, allergies from patients which have allergies to either 'Penicillin' or 'Morphine'.  Show results ordered ascending by allergies then by first_name then by last_name.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 14,
+    "question": "Show patient_id, diagnosis from admissions. Find patients admitted multiple times for the same diagnosis.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 15,
+    "question": "Show the city and the total number of patients in the city.<br>\\nOrder from most to least patients and then by city name ascending.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 22,
+    "question": "Show all allergies ordered by popularity. Remove 'NKA' and NULL values from query.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 27,
+    "question": "Show all patient's first_name, last_name, and birth_date who were born in the 1970s decade. Sort the list starting from the earliest birth_date.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 28,
+    "question": "We want to display each patient's full name in a single column. Their last_name in all upper letters must appear first, then first_name in all lower case letters. Separate the last_name and first_name with a comma. Order the list by the first_name in decending order<br>\\nEX: SMITH,jane",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 30,
+    "question": "Show the province_id(s), sum of height; where the total sum of its patient's height is greater than or equal to 7,000.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 31,
+    "question": "Show the difference between the largest weight and smallest weight for patients with the last name 'Maroni'",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 37,
+    "question": "Show all of the days of the month (1-31) and how many admission_dates occurred on that day. Sort by the day with most admissions to least admissions.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 38,
+    "question": "Show the all columns for patient_id 542's most recent admission_date.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 40,
+    "question": "Show patient_id, attending_doctor_id, and diagnosis for admissions that match one of the two criteria:<br>\\n1. patient_id is an odd number and attending_doctor_id is either 1, 5, or 19.<br>\\n2. attending_doctor_id contains a 2 and the length of patient_id is 3 characters.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 47,
+    "question": "Show first_name, last_name, and the total number of admissions attended for each doctor.<br><br>Every admission has been attended by a doctor.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 48,
+    "question": "For each doctor, display their id, full name, and the first and last admission date they attended.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 50,
+    "question": "Display the total amount of patients for each province. Order by descending.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 51,
+    "question": "For every admission, display the patient's full name, their admission diagnosis, and their doctor's full name who diagnosed their problem.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 54,
+    "question": "display the first name, last name and number of duplicate patients based on their first name and last name.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 55,
+    "question": "Display patient's full name,<br> \\nheight in the unit feet rounded to 1 decimal, <br> \\nweight in the unit pounds rounded to 0 decimals, <br> \\nbirth_date,<br> \\ngender non abbreviated.<br> \\n<br> \\nConvert CM to feet by dividing by 30.48.<br> \\nConvert KG to pounds by multiplying by 2.205. ",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 65,
+    "question": "Show the ProductName, CompanyName, CategoryName from the products, suppliers, and categories table",
+    "mode": "medium",
+    "database": "northwind"
+  },
+  {
+    "id": 66,
+    "question": "Show the category_name and the average product unit price for each category rounded to 2 decimal places.",
+    "mode": "medium",
+    "database": "northwind"
+  },
+  {
+    "id": 67,
+    "question": "Show the city, company_name, contact_name from the customers and suppliers table merged together.<br>\\nCreate a column which contains 'customers' or 'suppliers' depending on the table it came from.",
+    "mode": "medium",
+    "database": "northwind"
+  },
+  {
+    "id": 70,
+    "question": "Show patient_id, first_name, last_name from patients whose does not have any records in the admissions table. (Their patient_id does not exist in any admissions.patient_id rows.)",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 72,
+    "question": "Show the total amount of orders for each year/month.",
+    "mode": "medium",
+    "database": "northwind"
+  },
+  {
+    "id": 74,
+    "question": "Display a single row with max_visits, min_visits, average_visits where the maximum, minimum and average number of admissions per day is calculated. Average is rounded to 2 decimal places.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 75,
+    "question": "Display every patient that has at least one admission and show their most recent admission along with the patient and doctor's full name.",
+    "mode": "medium",
+    "database": "hospital"
+  },
+  {
+    "id": 17,
+    "question": "Show all of the patients grouped into weight groups.<br>Show the total amount of patients in each weight group.<br>Order the list by the weight group decending.<br><br>For example, if they weight 100 to 109 they are placed in the 100 weight group, 110-119 = 110 weight group, etc.",
+    "mode": "hard",
+    "database": "hospital"
+  },
+  {
+    "id": 18,
+    "question": "Show patient_id, weight, height, isObese from the patients table.<br><br>\\nDisplay isObese as a boolean 0 or 1.<br><br>\\nObese is defined as weight(kg)/(height(m)<sup>2</sup>) >= 30.<br><br>\\nweight is in units kg.<br><br>\\nheight is in units cm.",
+    "mode": "hard",
+    "database": "hospital"
+  },
+  {
+    "id": 19,
+    "question": "Show patient_id, first_name, last_name, and attending doctor's specialty.<br>\\n  Show only the patients who has a diagnosis as 'Dementia' and the doctor's first name is 'Lisa'<br><br>\\nCheck patients, admissions, and doctors tables for required information.",
+    "mode": "hard",
+    "database": "hospital"
+  },
+  {
+    "id": 20,
+    "question": "All patients who have gone through admissions, can see their medical documents on our site. Those patients are given a temporary password after their first admission. Show the patient_id and temp_password.\\n<br><br>\\nThe password must be the following, in order:<br> \\n1. patient_id<br>\\n2. the numerical length of patient's last_name<br>\\n3. year of patient's birth_date",
+    "mode": "hard",
+    "database": "hospital"
+  },
+  {
+    "id": 21,
+    "question": "Each admission costs $50 for patients without insurance, and $10 for patients with insurance. All patients with an even patient_id have insurance.\\n<br><br>\\nGive each patient a 'Yes' if they have insurance, and a 'No' if they don't have insurance. Add up the admission_total cost for each has_insurance group.",
+    "mode": "hard",
+    "database": "hospital"
+  },
+  {
+    "id": 24,
+    "question": "Show the provinces that has more patients identified as 'M' than 'F'. Must only show full province_name",
+    "mode": "hard",
+    "database": "hospital"
+  },
+  {
+    "id": 25,
+    "question": "We are looking for a specific patient. Pull all columns for the patient who matches the following criteria:<br>\\n- First_name contains an 'r' after the first two letters.<br>\\n- Identifies their gender as 'F'<br>\\n- Born in February, May, or December<br>\\n- Their weight would be between 60kg and 80kg<br>\\n- Their patient_id is an odd number<br>\\n- They are from the city 'Kingston'",
+    "mode": "hard",
+    "database": "hospital"
+  },
+  {
+    "id": 26,
+    "question": "Show the percent of patients that have 'M' as their gender. Round the answer to the nearest hundreth number and in percent form.",
+    "mode": "hard",
+    "database": "hospital"
+  },
+  {
+    "id": 44,
+    "question": "For each day display the total amount of admissions on that day. Display the amount changed from the previous date.",
+    "mode": "hard",
+    "database": "hospital"
+  },
+  {
+    "id": 53,
+    "question": "Sort the province names in ascending order in such a way that the province 'Ontario' is always on top.",
+    "mode": "hard",
+    "database": "hospital"
+  },
+  {
+    "id": 69,
+    "question": "We need a breakdown for the total amount of admissions each doctor has started each year.\\nShow the doctor_id, doctor_full_name, specialty, year, total_admissions for that year.",
+    "mode": "hard",
+    "database": "hospital"
+  },
+  {
+    "id": 71,
+    "question": "Show how much money the company lost due to giving discounts each year, order the years from most recent to least recent. Round to 2 decimal places",
+    "mode": "hard",
+    "database": "northwind"
+  }
+]

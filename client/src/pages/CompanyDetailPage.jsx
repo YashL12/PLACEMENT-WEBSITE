@@ -13,11 +13,13 @@ import {
   FolderArchive,
   Users,
   Link2,
+  Code2,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { Badge } from '../components/Badge';
 import { RoundAccordion } from '../components/RoundAccordion';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { CompanyDetailSkeleton } from '../components/CompanyDetailSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CompanyLogo } from '../components/CompanyLogo';
 import { AlumniAvatar } from '../components/AlumniAvatar';
@@ -76,11 +78,7 @@ export const CompanyDetailPage = () => {
   };
 
   if (loading) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 py-16">
-        <LoadingSpinner message="Loading complete interview process..." size="large" />
-      </div>
-    );
+    return <CompanyDetailSkeleton />;
   }
 
   if (error || !company) {

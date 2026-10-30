@@ -19,6 +19,8 @@ const questionRoutes = require('./routes/questionRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const learningMaterialRoutes = require('./routes/learningMaterialRoutes');
 const alumniRoutes = require('./routes/alumniRoutes');
+const codingQuestionRoutes = require('./routes/codingQuestionRoutes');
+const executeRoutes = require('./routes/executeRoutes');
 
 // Connect to MongoDB
 connectDB();
@@ -55,21 +57,34 @@ app.use(
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Static asset caching options
+const staticOptions = {
+  maxAge: '7d',
+  etag: true,
+  lastModified: true,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+  },
+};
+
 // Static uploads directory for learning materials and local assets
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), staticOptions));
+// Fallback for logos served at /logos
+app.use('/logos', express.static(path.join(__dirname, '..', 'uploads', 'logos'), staticOptions));
+app.use('/logos', express.static(path.join(__dirname, '..', '..', 'client', 'public', 'logos'), staticOptions));
 
-// Apply rate limiting to all API endpoints
-app.use('/api', apiLimiter);
-
-// API Health Check
-app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
-    status: 'healthy',
+// Lightweight health checks for UptimeRobot and load balancers (placed before rate limiter)
+app.get(['/health', '/api/health'], (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'GECRPlacement API',
+    uptime: process.uptime(),
     timestamp: new Date().toISOString(),
-    service: 'GECR Placement Sarthi API',
   });
 });
+
+// Apply rate limiting to all other API endpoints
+app.use('/api', apiLimiter);
 
 // Mount Routes
 app.use('/api/companies', companyRoutes);
@@ -79,6 +94,8 @@ app.use('/api/questions', questionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/learning-materials', learningMaterialRoutes);
 app.use('/api/alumni', alumniRoutes);
+app.use('/api/coding-questions', codingQuestionRoutes);
+app.use('/api/execute', executeRoutes);
 
 // 404 Not Found Handler
 app.use('*', (req, res) => {

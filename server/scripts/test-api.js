@@ -55,9 +55,12 @@ async function runTests() {
   }
 
   try {
-    // Test 1: Health Check
-    const health = await makeRequest('/api/health');
-    assert(health.status === 200 && health.data.success === true, 'GET /api/health returns 200 OK');
+    // Test 1: Health Check for UptimeRobot
+    const uptimeHealth = await makeRequest('/health');
+    assert(uptimeHealth.status === 200 && uptimeHealth.data.status === 'ok', 'GET /health returns 200 OK for UptimeRobot monitor');
+
+    const apiHealth = await makeRequest('/api/health');
+    assert(apiHealth.status === 200 && apiHealth.data.status === 'ok', 'GET /api/health returns 200 OK');
 
     // Test 2: Public Company Listing
     const companiesRes = await makeRequest('/api/companies');
@@ -162,6 +165,96 @@ async function runTests() {
     assert(
       reviewQueue.status === 200 && reviewQueue.data.data?.companies?.length > 0,
       `GET /api/admin/review-queue returns flagged records needing review (Count: ${reviewQueue.data?.data?.companies?.length})`
+    );
+
+    // Test 12: Coding Directory Metadata Endpoint
+    const codingMeta = await makeRequest('/api/coding-questions/meta');
+    assert(
+      codingMeta.status === 200 &&
+      codingMeta.data.success === true &&
+      codingMeta.data.data?.totalCount >= 50 &&
+      Array.isArray(codingMeta.data.data?.platforms) &&
+      codingMeta.data.data?.platforms.includes('LeetCode'),
+      `GET /api/coding-questions/meta returns directory metadata (totalCount: ${codingMeta.data?.data?.totalCount}, platforms: ${codingMeta.data?.data?.platforms?.join(', ')})`
+    );
+
+    // Test 13: Coding Directory Listing (Pagination + Canonical URL check)
+    const codingList = await makeRequest('/api/coding-questions?limit=20');
+    assert(
+      codingList.status === 200 &&
+      codingList.data.success === true &&
+      codingList.data.data.questions.length > 0 &&
+      codingList.data.data.questions.every((q) => q.platform && q.externalUrl),
+      `GET /api/coding-questions returns directory cards with platform and canonical solve URLs (Count: ${codingList.data?.data?.questions?.length})`
+    );
+
+    // Test 14: Coding Directory Filter by Category (DSA vs SQL)
+    const dsaList = await makeRequest('/api/coding-questions?category=DSA');
+    assert(
+      dsaList.status === 200 &&
+      dsaList.data.data.questions.every((q) => q.category === 'DSA'),
+      'GET /api/coding-questions?category=DSA filters correctly to DSA only'
+    );
+
+    const sqlList = await makeRequest('/api/coding-questions?category=SQL');
+    assert(
+      sqlList.status === 200 &&
+      sqlList.data.data.questions.every((q) => q.category === 'SQL'),
+      'GET /api/coding-questions?category=SQL filters correctly to SQL only'
+    );
+
+    // Test 15: Coding Directory Filter by Platform (LeetCode)
+    const leetList = await makeRequest('/api/coding-questions?platform=LeetCode');
+    assert(
+      leetList.status === 200 &&
+      leetList.data.data.questions.every((q) => q.platform === 'LeetCode'),
+      'GET /api/coding-questions?platform=LeetCode filters correctly to LeetCode only'
+    );
+
+    // Test 16: Coding Directory Detail by Slug
+    const testSlug = codingList.data.data.questions[0].slug;
+    const codingDetail = await makeRequest(`/api/coding-questions/${testSlug}`);
+    assert(
+      codingDetail.status === 200 &&
+      codingDetail.data.success === true &&
+      codingDetail.data.data?.statement &&
+      codingDetail.data.data?.externalUrl &&
+      codingDetail.data.data?.platform,
+      `GET /api/coding-questions/:slug returns problem details with external solve link (Slug: ${testSlug})`
+    );
+
+    // Test 17: External canonical link format validity
+    const sampleQuestion = codingList.data.data.questions[0];
+    const isUrlValid = sampleQuestion.externalUrl.startsWith('https://');
+    assert(
+      isUrlValid,
+      `Canonical solve URL is valid HTTPS link: ${sampleQuestion.externalUrl}`
+    );
+
+    // Test 18: SQL-Practice Platform Questions
+    const sqlPracticeRes = await makeRequest('/api/coding-questions?platform=SQL-Practice');
+    assert(
+      sqlPracticeRes.status === 200 &&
+      sqlPracticeRes.data.data.questions.length > 0 &&
+      sqlPracticeRes.data.data.questions.every((q) => q.platform === 'SQL-Practice' && q.externalUrl.startsWith('https://www.sql-practice.com')),
+      `GET /api/coding-questions?platform=SQL-Practice returns authentic SQL-Practice questions (Count: ${sqlPracticeRes.data?.data?.questions?.length})`
+    );
+
+    // Test 19: Invalid question slug returns 404
+    const invalidSlugRes = await makeRequest('/api/coding-questions/non-existent-question-slug-12345');
+    assert(
+      invalidSlugRes.status === 404 && invalidSlugRes.data.success === false,
+      'GET /api/coding-questions/invalid-slug returns 404 Not Found'
+    );
+
+    // Test 20: Verify no questions leak "excel" in interviewContext
+    const allQuestionsRes = await makeRequest('/api/coding-questions?limit=100');
+    const hasExcelContext = allQuestionsRes.data?.data?.questions?.some(
+      (q) => q.interviewContext && /excel/i.test(q.interviewContext)
+    );
+    assert(
+      !hasExcelContext,
+      'Verified zero coding questions leak Excel references in interviewContext'
     );
 
     console.log('====================================================');
