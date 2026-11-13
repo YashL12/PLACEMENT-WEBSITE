@@ -2,15 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Building2, BookOpen, Users, ShieldCheck, Menu, X,
-  LogOut, Home, Code2, Database, ChevronDown,
+  LogOut, Home, Code2, Database, ChevronDown, Activity,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { tracker } from '../services/tracker';
 
 const NAV_LINKS = [
-  { label: 'Home',       path: '/',                icon: Home },
-  { label: 'Companies',  path: '/companies',       icon: Building2 },
-  { label: 'Practice',   path: '/practice',        icon: Code2 },
-  { label: 'Alumni',     path: '/alumni',          icon: Users },
+  { label: 'Home',       path: '/',                  icon: Home },
+  { label: 'Companies',  path: '/companies',         icon: Building2 },
+  { label: 'Practice',   path: '/practice',          icon: Code2 },
+  { label: 'Alumni',     path: '/alumni',            icon: Users },
   { label: 'Resources',  path: '/learning-material', icon: BookOpen },
 ];
 
@@ -69,8 +70,17 @@ export const Navbar = () => {
           {isAuthenticated ? (
             <>
               <Link
+                to="/admin/analytics"
+                className={`nav-link${location.pathname === '/admin/analytics' ? ' active' : ''}`}
+                aria-label="Visitor Analytics"
+                title="Visitor Analytics"
+              >
+                <Activity style={{ width: 14, height: 14, color: '#10b981' }} />
+                <span>Analytics</span>
+              </Link>
+              <Link
                 to="/admin/dashboard"
-                className={`nav-link${location.pathname.startsWith('/admin') ? ' active' : ''}`}
+                className={`nav-link${location.pathname.startsWith('/admin') && location.pathname !== '/admin/analytics' ? ' active' : ''}`}
                 aria-label="Admin dashboard"
               >
                 <ShieldCheck style={{ width: 14, height: 14 }} />
@@ -137,6 +147,12 @@ export const Navbar = () => {
           <div style={{ borderTop: '1px solid #f3f4f6', marginTop: '0.5rem', paddingTop: '0.5rem' }}>
             {isAuthenticated ? (
               <>
+                <Link to="/admin/analytics" className="nav-mobile-link">
+                  <div className="nav-mobile-icon">
+                    <Activity style={{ width: 15, height: 15, color: '#10b981' }} />
+                  </div>
+                  <span>Visitor Analytics</span>
+                </Link>
                 <Link to="/admin/dashboard" className="nav-mobile-link">
                   <div className="nav-mobile-icon">
                     <ShieldCheck style={{ width: 15, height: 15, color: '#6b7280' }} />
@@ -172,3 +188,5 @@ export const Navbar = () => {
     </header>
   );
 };
+
+export default Navbar;

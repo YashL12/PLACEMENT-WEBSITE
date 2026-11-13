@@ -1,18 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Building2, SearchX, ChevronLeft, ChevronRight, Search, X, AlertCircle, RotateCcw } from 'lucide-react';
+import {
+  Building2, SearchX, ChevronLeft, ChevronRight, Search, X,
+  AlertCircle, RotateCcw, Calendar,
+} from 'lucide-react';
 import { api } from '../services/api';
 import { CompanyCard } from '../components/CompanyCard';
 import { CompanyCardSkeleton } from '../components/CompanyCardSkeleton';
 import { EmptyState } from '../components/EmptyState';
+import { tracker } from '../services/tracker';
+
+const CATEGORY_TABS = [
+  { label: 'All Seasons',      value: '' },
+  { label: '2024',             value: '2024' },
+  { label: '2025',             value: '2025' },
+  { label: 'Report – 2026',    value: '2026' },
+];
 
 export const CompaniesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const searchQueryParam = searchParams.get('search') || '';
   const pageQueryParam = parseInt(searchParams.get('page') || '1', 10);
+  const yearQueryParam = searchParams.get('year') || '';
 
   const [searchQuery, setSearchQuery] = useState(searchQueryParam);
+  const [selectedYear, setSelectedYear] = useState(yearQueryParam);
   const [currentPage, setCurrentPage] = useState(pageQueryParam);
 
   const [companies, setCompanies] = useState([]);
@@ -26,6 +39,7 @@ export const CompaniesPage = () => {
       setError(null);
       const res = await api.getCompanies({
         search: searchQuery,
+        year: selectedYear || undefined,
         page: currentPage,
         limit: 12,
       });
@@ -47,11 +61,12 @@ export const CompaniesPage = () => {
   useEffect(() => {
     setSearchQuery(searchQueryParam);
     setCurrentPage(pageQueryParam);
-  }, [searchQueryParam, pageQueryParam]);
+    setSelectedYear(yearQueryParam);
+  }, [searchQueryParam, pageQueryParam, yearQueryParam]);
 
   useEffect(() => {
     fetchCompanies();
-  }, [searchQuery, currentPage]);
+  }, [searchQuery, selectedYear, currentPage]);
 
   const updateFilters = (newParams) => {
     const params = new URLSearchParams(searchParams);
@@ -62,15 +77,22 @@ export const CompaniesPage = () => {
         params.set(key, newParams[key]);
       }
     });
-    if ('search' in newParams) {
+    if ('search' in newParams || 'year' in newParams) {
       params.set('page', '1');
       setCurrentPage(1);
     }
     setSearchParams(params);
   };
 
+  const handleYearTabClick = (val) => {
+    setSelectedYear(val);
+    updateFilters({ year: val, page: '1' });
+    tracker.trackFeatureClick('filter_companies_category', { category: val || 'all' });
+  };
+
   const handleClearFilters = () => {
     setSearchQuery('');
+    setSelectedYear('');
     setCurrentPage(1);
     setSearchParams({});
   };
@@ -89,8 +111,28 @@ export const CompaniesPage = () => {
           </h1>
           <p className="text-sm text-slate-500 max-w-2xl leading-relaxed">
             Explore authentic multi-round interview breakdowns, round-by-round selection criteria,
-            and verified interview questions for each recruiting company.
+            and verified interview questions across 2024, 2025, and Report – 2026.
           </p>
+
+          {/* Three Data Categories Filter Tabs */}
+          <div className="flex items-center gap-2 mt-6 overflow-x-auto pb-1 scrollbar-none">
+            {CATEGORY_TABS.map((tab) => {
+              const isActive = selectedYear === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  onClick={() => handleYearTabClick(tab.value)}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap border ${
+                    isActive
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -105,8 +147,12 @@ export const CompaniesPage = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => {
-                setSearchQuery(e.target.value);
-                updateFilters({ search: e.target.value });
+                const val = e.target.value;
+                setSearchQuery(val);
+                updateFilters({ search: val });
+                if (val.trim().length >= 2) {
+                  tracker.trackSearch(val.trim(), 'companies');
+                }
               }}
               placeholder="Search by company name or alias — TSS, RKIT, TatvaSoft, Kevit, eSparkBiz..."
               className="flex-1 px-3 py-2.5 text-slate-900 placeholder-slate-400 text-sm bg-transparent focus:outline-none"
@@ -125,24 +171,29 @@ export const CompaniesPage = () => {
           </div>
         </div>
 
-        {/* Results count */}
+        {/* Results count & Active Category indicator */}
         <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-6">
-          <span>
+          <span className="flex items-center gap-2 flex-wrap">
             {loading ? 'Searching...' : (
               <>
                 Showing <span className="text-slate-800 font-semibold">{companies.length}</span> of{' '}
                 <span className="text-slate-800 font-semibold">{pagination.total}</span>{' '}
                 {pagination.total === 1 ? 'company' : 'companies'}
+                {selectedYear && (
+                  <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+                    Category: {selectedYear === '2026' ? 'Report – 2026' : selectedYear}
+                  </span>
+                )}
                 {searchQuery && <> matching &ldquo;<span className="text-blue-600">{searchQuery}</span>&rdquo;</>}
               </>
             )}
           </span>
-          {searchQuery && (
+          {(searchQuery || selectedYear) && (
             <button
               onClick={handleClearFilters}
-              className="text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+              className="text-blue-600 hover:text-blue-800 font-semibold transition-colors cursor-pointer"
             >
-              Clear search
+              Reset filters
             </button>
           )}
         </div>
@@ -193,7 +244,7 @@ export const CompaniesPage = () => {
                     updateFilters({ page: newPage.toString() });
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer"
                   aria-label="Previous page"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -213,7 +264,7 @@ export const CompaniesPage = () => {
                     updateFilters({ page: newPage.toString() });
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer"
                   aria-label="Next page"
                 >
                   <span>Next</span>
@@ -225,9 +276,15 @@ export const CompaniesPage = () => {
         ) : (
           <EmptyState
             icon={SearchX}
-            title={searchQuery ? `No companies matching "${searchQuery}"` : 'No companies found'}
-            description="We couldn't find any placement records matching your search. Try a shorter keyword or different alias — e.g., TSS, RKIT, Kevit."
-            actionLabel="Clear search"
+            title={
+              searchQuery
+                ? `No companies matching "${searchQuery}"`
+                : selectedYear
+                ? `No companies found for ${selectedYear === '2026' ? 'Report – 2026' : selectedYear}`
+                : 'No companies found'
+            }
+            description="We couldn't find any placement records matching your selection. Try a different season tab or clear your search keyword."
+            actionLabel="Reset filters"
             onAction={handleClearFilters}
           />
         )}
@@ -235,3 +292,5 @@ export const CompaniesPage = () => {
     </div>
   );
 };
+
+export default CompaniesPage;

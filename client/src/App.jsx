@@ -11,6 +11,10 @@ import { LoadingSpinner } from './components/LoadingSpinner';
 import { AdminLoginPage }      from './pages/AdminLoginPage';
 import { AdminDashboardPage }  from './pages/AdminDashboardPage';
 import { AdminCompanyEditPage } from './pages/AdminCompanyEditPage';
+import { AdminAnalyticsPage }  from './pages/AdminAnalyticsPage';
+
+// ── Telemetry & Analytics ───────────────────────────────────────────────────
+import { VisitorTracker }       from './components/VisitorTracker';
 
 // ── Lazily loaded student pages ───────────────────────────────────────────────
 const PracticePage         = lazy(() => import('./pages/PracticePage').then(m => ({ default: m.PracticePage })));
@@ -58,6 +62,7 @@ const AppShell = () => {
           <Routes>
             <Route path="/admin/login"               element={<AdminLoginPage />} />
             <Route path="/admin/dashboard"           element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />
+            <Route path="/admin/analytics"           element={<ProtectedRoute><AdminAnalyticsPage /></ProtectedRoute>} />
             <Route path="/admin/companies/new"       element={<ProtectedRoute><AdminCompanyEditPage /></ProtectedRoute>} />
             <Route path="/admin/companies/:id/edit"  element={<ProtectedRoute><AdminCompanyEditPage /></ProtectedRoute>} />
             <Route path="*"                          element={<Navigate to="/admin/login" replace />} />
@@ -69,6 +74,7 @@ const AppShell = () => {
 
   return (
     <div className="app-layout">
+      <VisitorTracker />
       <Navbar />
       <main style={{ flex: 1 }} className="page-fade-in" key={location.pathname}>
         <Suspense fallback={<PageFallback />}>

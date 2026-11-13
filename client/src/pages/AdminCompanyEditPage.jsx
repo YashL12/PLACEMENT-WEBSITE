@@ -329,7 +329,7 @@ export const AdminCompanyEditPage = () => {
                   }`}
                 >
                   <Calendar className="w-3.5 h-3.5" />
-                  <span>Season {yr}</span>
+                  <span>{yr === 2026 ? 'Report – 2026' : `Season ${yr}`}</span>
                 </button>
               );
             })}

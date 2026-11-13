@@ -39,9 +39,14 @@ const getCompanies = async (req, res, next) => {
       query.isPublished = true;
     }
 
-    // Year filtering
-    if (year && !isNaN(parseInt(year, 10))) {
-      query.placementYears = parseInt(year, 10);
+    // Year filtering: supports 2024, 2025, and Report – 2026
+    if (year) {
+      const normalizedYear = String(year).toLowerCase().trim();
+      if (normalizedYear === '2026' || normalizedYear === 'report' || normalizedYear === 'report-2026' || normalizedYear === 'report - 2026') {
+        query.placementYears = 2026;
+      } else if (!isNaN(parseInt(year, 10))) {
+        query.placementYears = parseInt(year, 10);
+      }
     }
 
     // Search filter: case-insensitive name or alias matching

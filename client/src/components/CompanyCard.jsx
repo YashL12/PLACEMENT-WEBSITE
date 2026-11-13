@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Calendar, Layers, ExternalLink } from 'lucide-react';
-import { Badge } from './Badge';
+import { Badge, formatYearLabel } from './Badge';
 import { CompanyLogo } from './CompanyLogo';
 
 export const CompanyCard = ({ company }) => {
@@ -73,18 +73,21 @@ export const CompanyCard = ({ company }) => {
           </p>
         )}
 
-        {/* Placement years */}
+        {/* Placement years: Three Data Categories (2024, 2025, Report – 2026) */}
         <div className="flex items-center gap-2 flex-wrap">
           <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" aria-hidden="true" />
           <span className="text-xs text-slate-500 font-medium">Seasons:</span>
           {years.length > 0 ? (
             years.map((yr) => (
-              <Badge key={yr} variant={yr === 2025 ? 'year2025' : 'year2024'}>
-                {yr}
+              <Badge
+                key={yr}
+                variant={yr === 2026 ? 'year2026' : yr === 2025 ? 'year2025' : 'year2024'}
+              >
+                {formatYearLabel(yr)}
               </Badge>
             ))
           ) : (
-            <Badge variant="yearUnknown">Recorded</Badge>
+            <Badge variant="year2026">Report – 2026</Badge>
           )}
         </div>
       </div>
@@ -110,3 +113,5 @@ export const CompanyCard = ({ company }) => {
     </article>
   );
 };
+
+export default CompanyCard;

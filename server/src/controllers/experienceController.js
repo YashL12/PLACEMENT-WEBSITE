@@ -12,7 +12,14 @@ const getExperiences = async (req, res, next) => {
 
     const query = {};
     if (companyId) query.company = companyId;
-    if (year) query.placementYear = parseInt(year, 10);
+    if (year) {
+      const normalizedYear = String(year).toLowerCase().trim();
+      if (normalizedYear === '2026' || normalizedYear === 'report' || normalizedYear === 'report-2026' || normalizedYear === 'report - 2026') {
+        query.placementYear = 2026;
+      } else if (!isNaN(parseInt(year, 10))) {
+        query.placementYear = parseInt(year, 10);
+      }
+    }
     if (includeUnpublished !== 'true') query.isPublished = true;
 
     const experiences = await InterviewExperience.find(query)

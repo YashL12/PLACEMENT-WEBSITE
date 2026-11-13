@@ -57,8 +57,8 @@ export const PracticePage = () => {
             Coding Practice Directory
           </h1>
           <p className="page-hero-subtitle">
-            Curated placement questions from real GECR campus drives. Solve on LeetCode,
-            GeeksforGeeks, HackerRank, and more.
+            Curated placement questions from real GECR campus drives across 2024, 2025, and Report – 2026.
+            Solve on LeetCode, GeeksforGeeks, HackerRank, and more.
           </p>
         </div>
       </div>
@@ -95,46 +95,45 @@ export const PracticePage = () => {
         )}
         <style>{`@media (min-width: 640px) { .practice-stats { grid-template-columns: repeat(4, 1fr) !important; } }`}</style>
 
-        {/* Category Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1.25rem', marginBottom: '2.5rem' }} className="category-cards">
+        {/* Dual Category Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1.5rem', marginBottom: '2rem' }} className="category-cards">
           {/* DSA */}
           <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 20, overflow: 'hidden', boxShadow: '0 1px 3px rgb(0 0 0 / 0.05)' }}>
             <div style={{ padding: '1.75rem 1.75rem 1.5rem', borderBottom: '1px solid #f3f4f6' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.125rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-                  <div style={{ width: 52, height: 52, borderRadius: 14, background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Code2 style={{ width: 26, height: 26, color: '#7c3aed' }} />
+                  <div style={{ width: 52, height: 52, borderRadius: 14, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Code2 style={{ width: 26, height: 26, color: '#2563eb' }} />
                   </div>
                   <div>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>DSA Practice</h2>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Data Structures & Algorithms</h2>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: '0.25rem' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#7c3aed', background: '#f5f3ff', padding: '0.1rem 0.5rem', borderRadius: 999, border: '1px solid #ddd6fe' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2563eb', background: '#eff6ff', padding: '0.1rem 0.5rem', borderRadius: 999, border: '1px solid #bfdbfe' }}>
                         {meta.codingCount} questions
                       </span>
                       <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>·</span>
-                      <span style={{ fontSize: '0.72rem', color: '#6b7280' }}>Easy · Medium · Hard</span>
+                      <span style={{ fontSize: '0.72rem', color: '#6b7280' }}>Arrays · Trees · Graphs · DP & more</span>
                     </div>
                   </div>
                 </div>
                 <Link to="/practice/dsa" style={{
                   display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
                   padding: '0.5rem 1.125rem', borderRadius: 10,
-                  background: '#7c3aed', color: '#fff',
+                  background: '#2563eb', color: '#fff',
                   fontSize: '0.8125rem', fontWeight: 700, textDecoration: 'none',
                   flexShrink: 0, transition: 'all 0.15s',
                 }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#6d28d9'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#7c3aed'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.transform = 'translateY(0)'; }}
                 >
                   Practice DSA <ArrowRight style={{ width: 13, height: 13 }} />
                 </Link>
               </div>
               <p style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.65, margin: 0 }}>
-                Arrays, Strings, Linked Lists, Trees, Graphs, Dynamic Programming, and more —
-                covering all DSA topics asked in campus placement drives.
+                Comprehensive DSA problem set covering all essential patterns asked in campus interviews.
+                Includes verified PYQs tagged to specific recruiting companies.
               </p>
             </div>
-            {/* Topics grid */}
             <div style={{ padding: '1.25rem 1.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
               {DSA_TOPICS.map(t => (
                 <Link key={t.label} to={`/practice/dsa?topic=${encodeURIComponent(t.label)}`}
@@ -234,3 +233,5 @@ export const PracticePage = () => {
     </div>
   );
 };
+
+export default PracticePage;

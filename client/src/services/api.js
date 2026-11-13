@@ -2,6 +2,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // ── Client-side In-Memory Cache (makes navigation instant) ─────────────────────
 const clientCache = new Map();
+const inFlightRequests = new Map();
 const DEFAULT_TTL_MS = 3 * 60 * 1000; // 3 minutes
 
 function getCached(key) {
@@ -20,6 +21,21 @@ function setCached(key, data, ttlMs = DEFAULT_TTL_MS) {
     if (oldest) clientCache.delete(oldest);
   }
   clientCache.set(key, { data, expiresAt: Date.now() + ttlMs });
+}
+
+function deduplicatedFetch(key, fetcher) {
+  if (inFlightRequests.has(key)) {
+    return inFlightRequests.get(key);
+  }
+  const promise = (async () => {
+    try {
+      return await fetcher();
+    } finally {
+      inFlightRequests.delete(key);
+    }
+  })();
+  inFlightRequests.set(key, promise);
+  return promise;
 }
 
 export function clearClientCache(prefix = null) {
@@ -86,12 +102,14 @@ export const api = {
       if (cached) return cached;
     }
 
-    const res = await fetchWithTimeout(`${API_BASE_URL}/companies?${query.toString()}`);
-    const data = await handleResponse(res);
-    if (!params.includeUnpublished) {
-      setCached(cacheKey, data, 60 * 1000);
-    }
-    return data;
+    return deduplicatedFetch(cacheKey, async () => {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/companies?${query.toString()}`);
+      const data = await handleResponse(res);
+      if (!params.includeUnpublished) {
+        setCached(cacheKey, data, 60 * 1000);
+      }
+      return data;
+    });
   },
 
   async getPublicStats() {
@@ -99,10 +117,12 @@ export const api = {
     const cached = getCached(cacheKey);
     if (cached) return cached;
 
-    const res = await fetchWithTimeout(`${API_BASE_URL}/companies/stats/summary`);
-    const data = await handleResponse(res);
-    setCached(cacheKey, data, 2 * 60 * 1000);
-    return data;
+    return deduplicatedFetch(cacheKey, async () => {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/companies/stats/summary`);
+      const data = await handleResponse(res);
+      setCached(cacheKey, data, 2 * 60 * 1000);
+      return data;
+    });
   },
 
   async getCompanyById(id, includeUnpublished = false) {
@@ -112,26 +132,44 @@ export const api = {
       if (cached) return cached;
     }
 
-    const query = includeUnpublished ? '?includeUnpublished=true' : '';
-    const res = await fetchWithTimeout(`${API_BASE_URL}/companies/${id}${query}`, {
-      headers: { ...getAuthHeaders() },
+    return deduplicatedFetch(cacheKey, async () => {
+      const query = includeUnpublished ? '?includeUnpublished=true' : '';
+      const res = await fetchWithTimeout(`${API_BASE_URL}/companies/${id}${query}`, {
+        headers: { ...getAuthHeaders() },
+      });
+      const data = await handleResponse(res);
+      if (!includeUnpublished) {
+        setCached(cacheKey, data, 2 * 60 * 1000);
+      }
+      return data;
     });
-    const data = await handleResponse(res);
-    if (!includeUnpublished) {
-      setCached(cacheKey, data, 2 * 60 * 1000);
-    }
-    return data;
   },
 
   async getExperiences(params = {}) {
     const query = new URLSearchParams(params).toString();
-    const res = await fetchWithTimeout(`${API_BASE_URL}/experiences?${query}`);
-    return handleResponse(res);
+    const cacheKey = `experiences:${query}`;
+    const cached = getCached(cacheKey);
+    if (cached) return cached;
+
+    return deduplicatedFetch(cacheKey, async () => {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/experiences?${query}`);
+      const data = await handleResponse(res);
+      setCached(cacheKey, data, 60 * 1000);
+      return data;
+    });
   },
 
   async getExperienceById(id) {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/experiences/${id}`);
-    return handleResponse(res);
+    const cacheKey = `experience:${id}`;
+    const cached = getCached(cacheKey);
+    if (cached) return cached;
+
+    return deduplicatedFetch(cacheKey, async () => {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/experiences/${id}`);
+      const data = await handleResponse(res);
+      setCached(cacheKey, data, 60 * 1000);
+      return data;
+    });
   },
 
   // ─── Admin Authentication & Credentials ─────────────────────────────────────
@@ -359,17 +397,27 @@ export const api = {
       if (cached) return cached;
     }
 
-    const res = await fetchWithTimeout(`${API_BASE_URL}/learning-materials?${query.toString()}`);
-    const data = await handleResponse(res);
-    if (!params.includeUnpublished) {
-      setCached(cacheKey, data, 90 * 1000);
-    }
-    return data;
+    return deduplicatedFetch(cacheKey, async () => {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/learning-materials?${query.toString()}`);
+      const data = await handleResponse(res);
+      if (!params.includeUnpublished) {
+        setCached(cacheKey, data, 90 * 1000);
+      }
+      return data;
+    });
   },
 
   async getLearningMaterialById(id) {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/learning-materials/${id}`);
-    return handleResponse(res);
+    const cacheKey = `material:${id}`;
+    const cached = getCached(cacheKey);
+    if (cached) return cached;
+
+    return deduplicatedFetch(cacheKey, async () => {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/learning-materials/${id}`);
+      const data = await handleResponse(res);
+      setCached(cacheKey, data, 90 * 1000);
+      return data;
+    });
   },
 
   async createLearningMaterial(formData) {
@@ -428,17 +476,27 @@ export const api = {
       if (cached) return cached;
     }
 
-    const res = await fetchWithTimeout(`${API_BASE_URL}/alumni?${query.toString()}`);
-    const data = await handleResponse(res);
-    if (!params.includeUnpublished) {
-      setCached(cacheKey, data, 90 * 1000);
-    }
-    return data;
+    return deduplicatedFetch(cacheKey, async () => {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/alumni?${query.toString()}`);
+      const data = await handleResponse(res);
+      if (!params.includeUnpublished) {
+        setCached(cacheKey, data, 90 * 1000);
+      }
+      return data;
+    });
   },
 
   async getAlumniById(id) {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/alumni/${id}`);
-    return handleResponse(res);
+    const cacheKey = `alumnus:${id}`;
+    const cached = getCached(cacheKey);
+    if (cached) return cached;
+
+    return deduplicatedFetch(cacheKey, async () => {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/alumni/${id}`);
+      const data = await handleResponse(res);
+      setCached(cacheKey, data, 90 * 1000);
+      return data;
+    });
   },
 
   async createAlumni(data) {
@@ -491,10 +549,12 @@ export const api = {
     const cached = getCached(cacheKey);
     if (cached) return cached;
 
-    const res = await fetchWithTimeout(`${API_BASE_URL}/coding-questions/meta`);
-    const data = await handleResponse(res);
-    setCached(cacheKey, data, 5 * 60 * 1000);
-    return data;
+    return deduplicatedFetch(cacheKey, async () => {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/coding-questions/meta`);
+      const data = await handleResponse(res);
+      setCached(cacheKey, data, 5 * 60 * 1000);
+      return data;
+    });
   },
 
   async getCodingStats() {
@@ -502,10 +562,12 @@ export const api = {
     const cached = getCached(cacheKey);
     if (cached) return cached;
 
-    const res = await fetchWithTimeout(`${API_BASE_URL}/coding-questions/stats`);
-    const data = await handleResponse(res);
-    setCached(cacheKey, data, 5 * 60 * 1000);
-    return data;
+    return deduplicatedFetch(cacheKey, async () => {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/coding-questions/stats`);
+      const data = await handleResponse(res);
+      setCached(cacheKey, data, 5 * 60 * 1000);
+      return data;
+    });
   },
 
   async getCodingQuestions(params = {}) {
@@ -526,10 +588,12 @@ export const api = {
     const cached = getCached(cacheKey);
     if (cached) return cached;
 
-    const res = await fetchWithTimeout(`${API_BASE_URL}/coding-questions?${query.toString()}`);
-    const data = await handleResponse(res);
-    setCached(cacheKey, data, 2 * 60 * 1000);
-    return data;
+    return deduplicatedFetch(cacheKey, async () => {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/coding-questions?${query.toString()}`);
+      const data = await handleResponse(res);
+      setCached(cacheKey, data, 2 * 60 * 1000);
+      return data;
+    });
   },
 
   async getCodingQuestionBySlug(slug) {
@@ -537,10 +601,12 @@ export const api = {
     const cached = getCached(cacheKey);
     if (cached) return cached;
 
-    const res = await fetchWithTimeout(`${API_BASE_URL}/coding-questions/${encodeURIComponent(slug)}`);
-    const data = await handleResponse(res);
-    setCached(cacheKey, data, 5 * 60 * 1000);
-    return data;
+    return deduplicatedFetch(cacheKey, async () => {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/coding-questions/${encodeURIComponent(slug)}`);
+      const data = await handleResponse(res);
+      setCached(cacheKey, data, 5 * 60 * 1000);
+      return data;
+    });
   },
 
   async getCodingQuestionsBySlugList(slugs) {
@@ -566,6 +632,135 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug, lang, code }),
+    });
+    return handleResponse(res);
+  },
+
+  // ─── Analytics APIs (Admin Protected) ──────────────────────────────────────
+  async getAnalyticsOverview(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetchWithTimeout(`${API_BASE_URL}/analytics/dashboard?${query}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(res);
+  },
+
+  async getAnalyticsTrends(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetchWithTimeout(`${API_BASE_URL}/analytics/trends?${query}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(res);
+  },
+
+  async getAnalyticsPages(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetchWithTimeout(`${API_BASE_URL}/analytics/pages?${query}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(res);
+  },
+
+  async getAnalyticsDevices(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetchWithTimeout(`${API_BASE_URL}/analytics/devices?${query}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(res);
+  },
+
+  async getAnalyticsGeo(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetchWithTimeout(`${API_BASE_URL}/analytics/geo?${query}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(res);
+  },
+
+  async getAnalyticsSources(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetchWithTimeout(`${API_BASE_URL}/analytics/sources?${query}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(res);
+  },
+
+  async getAnalyticsSearches(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetchWithTimeout(`${API_BASE_URL}/analytics/searches?${query}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(res);
+  },
+
+  async getAnalyticsEngagement(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetchWithTimeout(`${API_BASE_URL}/analytics/engagement?${query}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(res);
+  },
+
+  async getAnalyticsJourneys(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetchWithTimeout(`${API_BASE_URL}/analytics/journeys?${query}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(res);
+  },
+
+  async getAnalyticsRealtime() {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/analytics/realtime`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(res);
+  },
+
+  async getAnalyticsVisitors(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetchWithTimeout(`${API_BASE_URL}/analytics/visitors?${query}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(res);
+  },
+
+  async getAnalyticsVisitorDetails(visitorId) {
+    const res = await fetchWithTimeout(
+      `${API_BASE_URL}/analytics/visitors/${encodeURIComponent(visitorId)}`,
+      {
+        headers: { ...getAuthHeaders() },
+      }
+    );
+    return handleResponse(res);
+  },
+
+  async downloadAnalyticsCsv(range = '30d', type = 'sessions') {
+    const res = await fetchWithTimeout(
+      `${API_BASE_URL}/analytics/export?range=${encodeURIComponent(range)}&type=${encodeURIComponent(type)}`,
+      {
+        headers: { ...getAuthHeaders() },
+      }
+    );
+    if (!res.ok) throw new Error('Failed to download CSV');
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `gecr-analytics-${type}-${Date.now()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  async purgeAnalyticsData(payload) {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/analytics/purge`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(payload),
     });
     return handleResponse(res);
   },

@@ -21,11 +21,15 @@ const learningMaterialRoutes = require('./routes/learningMaterialRoutes');
 const alumniRoutes = require('./routes/alumniRoutes');
 const codingQuestionRoutes = require('./routes/codingQuestionRoutes');
 const executeRoutes = require('./routes/executeRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 
 // Connect to MongoDB
 connectDB();
 
 const app = express();
+
+// Secure proxy configuration for Render & reverse proxies (ensures trusted req.ip resolution)
+app.set('trust proxy', process.env.TRUST_PROXY ? (isNaN(process.env.TRUST_PROXY) ? process.env.TRUST_PROXY : parseInt(process.env.TRUST_PROXY, 10)) : 1);
 
 // Security HTTP headers
 app.use(helmet({
@@ -96,6 +100,7 @@ app.use('/api/learning-materials', learningMaterialRoutes);
 app.use('/api/alumni', alumniRoutes);
 app.use('/api/coding-questions', codingQuestionRoutes);
 app.use('/api/execute', executeRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // 404 Not Found Handler
 app.use('*', (req, res) => {

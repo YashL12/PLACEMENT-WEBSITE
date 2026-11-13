@@ -1,27 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Building2, BookOpen, Users, Shield, Home,
-  Code2, Heart, ExternalLink, GraduationCap,
+  Code2, Heart, ExternalLink, GraduationCap, ShieldCheck,
 } from 'lucide-react';
+import { PrivacyDialog } from './PrivacyDialog';
 
 const QUICK_LINKS = [
-  { label: 'Home',           path: '/',                icon: Home },
-  { label: 'Company Directory', path: '/companies',   icon: Building2 },
-  { label: 'Practice',       path: '/practice',        icon: Code2 },
-  { label: 'Alumni Network', path: '/alumni',          icon: Users },
-  { label: 'Resources',      path: '/learning-material', icon: BookOpen },
+  { label: 'Home',              path: '/',                  icon: Home },
+  { label: 'Company Directory', path: '/companies',         icon: Building2 },
+  { label: 'Practice Hub',      path: '/practice',          icon: Code2 },
+  { label: 'Alumni Network',    path: '/alumni',            icon: Users },
+  { label: 'Resources',         path: '/learning-material', icon: BookOpen },
 ];
 
 const WHATSAPP_URL = `https://wa.me/916351521549?text=${encodeURIComponent('Hi Yash, I have a question about GECRPlacement.')}`;
 
 export const Footer = () => {
+  const [privacyOpen, setPrivacyOpen] = useState(false);
   const year = new Date().getFullYear();
+
   return (
     <footer className="footer" role="contentinfo">
       <div className="footer-inner">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2.5rem' }}
-          className="footer-grid">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2.5rem' }} className="footer-grid">
           {/* Brand */}
           <div style={{ maxWidth: 380 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '1rem' }}>
@@ -132,10 +134,24 @@ export const Footer = () => {
         {/* Bottom bar */}
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', marginTop: '2.5rem', paddingTop: '1.5rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-            <p style={{ fontSize: '0.75rem', color: '#475569' }}>
-              © {year} GECRPlacement. Independent student initiative.
-            </p>
-            <p style={{ fontSize: '0.75rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <p style={{ fontSize: '0.75rem', color: '#475569', margin: 0 }}>
+                © {year} GECRPlacement. Independent student initiative.
+              </p>
+              <button
+                onClick={() => setPrivacyOpen(true)}
+                style={{
+                  background: 'none', border: 'none', padding: 0,
+                  fontSize: '0.72rem', color: '#64748b', cursor: 'pointer',
+                  textDecoration: 'underline', transition: 'color 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.color = '#94a3b8'}
+                onMouseLeave={e => e.currentTarget.style.color = '#64748b'}
+              >
+                Privacy & First-Party Analytics
+              </button>
+            </div>
+            <p style={{ fontSize: '0.75rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.375rem', margin: 0 }}>
               <span>Built with</span>
               <Heart style={{ width: 12, height: 12, color: '#f87171', fill: '#f87171' }} />
               <span>by <strong style={{ color: '#94a3b8' }}>Yash Lakhani</strong></span>
@@ -143,6 +159,10 @@ export const Footer = () => {
           </div>
         </div>
       </div>
+
+      <PrivacyDialog isOpen={privacyOpen} onClose={() => setPrivacyOpen(false)} />
     </footer>
   );
 };
+
+export default Footer;

@@ -36,6 +36,7 @@ import {
   Image as ImageIcon,
   AlertCircle,
   Check,
+  Activity,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -628,6 +629,14 @@ export const AdminDashboardPage = () => {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
+          <Link
+            to="/admin/analytics"
+            className="px-3.5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5"
+          >
+            <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
+            <span>Visitor Analytics</span>
+          </Link>
+
           {activeTab === 'companies' && (
             <Link
               to="/admin/companies/new"
@@ -701,7 +710,7 @@ export const AdminDashboardPage = () => {
               {stats.totals.experiences}
             </span>
             <span className="text-[11px] text-slate-500 font-medium">
-              2024 & 2025 Seasons
+              2024, 2025 &amp; Report – 2026
             </span>
           </div>
 
@@ -821,6 +830,14 @@ export const AdminDashboardPage = () => {
           <Settings className="w-4 h-4" />
           <span>Settings & Security</span>
         </button>
+
+        <Link
+          to="/admin/analytics"
+          className="px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-indigo-700 hover:text-indigo-900 whitespace-nowrap transition-colors flex items-center gap-2 hover:bg-indigo-50/40 rounded-t-lg"
+        >
+          <Activity className="w-4 h-4 text-emerald-500 animate-pulse" />
+          <span>Visitor Analytics</span>
+        </Link>
       </div>
 
       {/* Hidden file input for fast company logo upload */}
@@ -913,7 +930,7 @@ export const AdminDashboardPage = () => {
                       <div className="flex gap-1 flex-wrap">
                         {c.placementYears?.map((y) => (
                           <Badge key={y} variant={y === 2026 ? 'year2026' : y === 2025 ? 'year2025' : 'year2024'}>
-                            {y}
+                            {y === 2026 ? 'Report – 2026' : y}
                           </Badge>
                         ))}
                       </div>
@@ -1006,7 +1023,7 @@ export const AdminDashboardPage = () => {
                   <div className="flex gap-1 flex-wrap">
                     {c.placementYears?.map((y) => (
                       <Badge key={y} variant={y === 2026 ? 'year2026' : y === 2025 ? 'year2025' : 'year2024'}>
-                        {y}
+                        {y === 2026 ? 'Report – 2026' : y}
                       </Badge>
                     ))}
                   </div>

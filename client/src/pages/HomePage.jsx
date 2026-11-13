@@ -9,6 +9,7 @@ import { api } from '../services/api';
 import { CompanyCard } from '../components/CompanyCard';
 import { CompanyCardSkeleton } from '../components/CompanyCardSkeleton';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { tracker } from '../services/tracker';
 
 const PRIORITY_COMPANIES = ['Kevit', 'TSS', 'RKIT', 'TatvaSoft', 'eSparkBiz', 'Gateway', 'Prominent Pixel', 'GN Websoft'];
 
@@ -28,7 +29,7 @@ const FEATURES = [
     iconBg: '#f0f4ff',
     iconColor: '#4f46e5',
     title: 'Company Directory',
-    desc: 'Priority-ordered recruiting companies with complete interview timelines, selection criteria, and round breakdowns.',
+    desc: 'Priority-ordered recruiting companies across 2024, 2025, and Report – 2026 with complete interview timelines and criteria.',
     href: '/companies',
     cta: 'Browse Companies',
     ctaColor: '#4f46e5',
@@ -97,7 +98,13 @@ export const HomePage = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    navigate(searchQuery.trim() ? `/companies?search=${encodeURIComponent(searchQuery.trim())}` : '/companies');
+    const query = searchQuery.trim();
+    if (query) {
+      tracker.trackSearch(query, 'companies');
+      navigate(`/companies?search=${encodeURIComponent(query)}`);
+    } else {
+      navigate('/companies');
+    }
   };
 
   const STATS = [
@@ -124,132 +131,120 @@ export const HomePage = () => {
               display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
               padding: '0.3rem 0.875rem', borderRadius: 999,
               background: '#fff', border: '1px solid #bfdbfe',
-              color: '#1d4ed8', fontSize: '0.75rem', fontWeight: 600,
-              marginBottom: '1.5rem',
-              boxShadow: '0 1px 4px rgb(0 0 0 / 0.06)',
+              color: '#1d4ed8', fontSize: '0.75rem', fontWeight: 700,
+              marginBottom: '1.25rem', boxShadow: '0 1px 4px rgb(37 99 235 / 0.08)',
             }}>
-              <img src="/gecr-logo.png" alt="GECR" width="14" height="14" style={{ objectFit: 'contain' }} />
-              <span>GEC Rajkot · Computer Department</span>
-              <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#93c5fd' }} />
-              <span style={{ color: '#60a5fa' }}>Placement Portal</span>
+              <GraduationCap style={{ width: 14, height: 14 }} />
+              GEC Rajkot · Computer Engineering Dept
             </div>
 
-            {/* Headline */}
+            {/* Title */}
             <h1 style={{
-              fontSize: 'clamp(2rem, 5vw, 3.25rem)',
-              fontWeight: 900,
+              fontSize: 'clamp(2rem, 5vw, 3rem)',
+              fontWeight: 800,
               color: '#0f172a',
-              lineHeight: 1.12,
-              letterSpacing: '-0.035em',
+              letterSpacing: '-0.03em',
+              lineHeight: 1.15,
               marginBottom: '1rem',
             }}>
-              Ace Your Placement{' '}
-              <span style={{ color: '#1a56db' }}>with Real Insights</span>
+              Crack Your Campus Placement with{' '}
+              <span style={{
+                background: 'linear-gradient(135deg, #1d4ed8 0%, #7c3aed 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}>
+                Real Experiences
+              </span>
             </h1>
 
+            {/* Subtitle */}
             <p style={{
-              fontSize: '1.0625rem', color: '#6b7280', lineHeight: 1.7,
-              marginBottom: '2rem', maxWidth: 520, margin: '0 auto 2rem',
+              fontSize: 'clamp(0.95rem, 2vw, 1.125rem)',
+              color: '#475569',
+              lineHeight: 1.7,
+              marginBottom: '2rem',
+              fontWeight: 400,
             }}>
-              Verified interview experiences, authentic question banks, company-wise
-              selection processes — all gathered from GECR students.
+              Authentic round-by-round interview questions, selection processes, and
+              preparation resources from seniors across <strong>2024, 2025, and Report – 2026</strong>.
             </p>
 
-            {/* Search */}
-            <form onSubmit={handleSearch} style={{ maxWidth: 540, margin: '0 auto 1.25rem' }}>
-              <div style={{
-                display: 'flex', alignItems: 'center',
-                background: '#fff', borderRadius: 14,
-                border: '1.5px solid #e5e7eb',
-                boxShadow: '0 2px 12px rgb(0 0 0 / 0.07)',
-                padding: '0.375rem 0.375rem 0.375rem 1rem',
-                transition: 'border-color 0.15s, box-shadow 0.15s',
-              }}
-                onFocus={e => { e.currentTarget.style.borderColor = '#60a5fa'; e.currentTarget.style.boxShadow = '0 2px 12px rgb(0 0 0 / 0.07), 0 0 0 3px rgb(96 165 250 / 0.15)'; }}
-                onBlur={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.boxShadow = '0 2px 12px rgb(0 0 0 / 0.07)'; }}
-              >
-                <Search style={{ width: 18, height: 18, color: '#9ca3af', flexShrink: 0, marginRight: '0.5rem' }} />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search companies — TSS, Kevit, TatvaSoft..."
-                  style={{
-                    flex: 1, border: 'none', outline: 'none', background: 'transparent',
-                    fontSize: '0.9rem', color: '#111827',
-                  }}
-                  aria-label="Search companies"
-                />
-                <button type="submit" style={{
-                  flexShrink: 0,
-                  display: 'flex', alignItems: 'center', gap: '0.375rem',
-                  padding: '0.5rem 1rem', borderRadius: 10,
-                  background: '#1a56db', color: '#fff',
-                  border: 'none', fontSize: '0.875rem', fontWeight: 600,
-                  cursor: 'pointer', transition: 'background 0.15s',
+            {/* Search Bar */}
+            <form onSubmit={handleSearch} style={{
+              display: 'flex', alignItems: 'center',
+              background: '#fff', border: '2px solid #2563eb',
+              borderRadius: 14, padding: '0.35rem 0.35rem 0.35rem 1rem',
+              boxShadow: '0 4px 20px rgb(37 99 235 / 0.12)',
+              marginBottom: '1.25rem',
+            }}>
+              <Search style={{ width: 18, height: 18, color: '#9ca3af', flexShrink: 0, marginRight: '0.625rem' }} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search companies — Kevit, TSS, RKIT, TatvaSoft..."
+                style={{
+                  flex: 1, border: 'none', outline: 'none',
+                  fontSize: '0.9375rem', color: '#111827', background: 'transparent',
                 }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#1e40af'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#1a56db'}
-                >
-                  <span className="hide-mobile">Search</span>
-                  <ArrowRight style={{ width: 15, height: 15 }} />
-                </button>
-              </div>
+              />
+              <button
+                type="submit"
+                className="btn btn-navy"
+                style={{ padding: '0.65rem 1.25rem', borderRadius: 10, fontSize: '0.875rem' }}
+              >
+                Search
+              </button>
             </form>
 
-            {/* Quick chips */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'center' }}>
-              <span style={{ fontSize: '0.75rem', color: '#9ca3af', alignSelf: 'center' }}>Priority:</span>
+            {/* Priority Company Tags */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Frequent Recruiters:</span>
               {PRIORITY_COMPANIES.map(name => (
-                <button
+                <Link
                   key={name}
-                  onClick={() => navigate(`/companies?search=${encodeURIComponent(name)}`)}
+                  to={`/companies?search=${encodeURIComponent(name)}`}
                   style={{
-                    padding: '0.275rem 0.7rem', borderRadius: 8,
-                    background: '#fff', border: '1px solid #e5e7eb',
-                    fontSize: '0.75rem', fontWeight: 500, color: '#374151',
-                    cursor: 'pointer', transition: 'all 0.12s',
+                    padding: '0.2rem 0.6rem', borderRadius: 999,
+                    background: '#fff', border: '1px solid #e2e8f0',
+                    color: '#334155', fontSize: '0.75rem', fontWeight: 500,
+                    textDecoration: 'none', transition: 'all 0.15s ease',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#93c5fd'; e.currentTarget.style.color = '#1d4ed8'; e.currentTarget.style.background = '#eff6ff'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#fff'; }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#2563eb'; e.currentTarget.style.color = '#2563eb'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#334155'; }}
                 >
                   {name}
-                </button>
+                </Link>
               ))}
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* Stats */}
+      {/* ── Stats Strip ───────────────────────────────────────────────────── */}
+      <section style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '1.75rem 0' }}>
+        <div className="container">
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: '0.875rem', maxWidth: 700, margin: '3rem auto 0',
-          }}
-            className="stats-grid"
-          >
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '1rem',
+          }} className="stats-grid">
             {STATS.map((s, i) => {
               const Icon = s.icon;
               return (
-                <div key={i} style={{
-                  background: '#fff', border: '1px solid #e5e7eb',
-                  borderRadius: 14, padding: '1rem 1.25rem',
-                  display: 'flex', alignItems: 'center', gap: '0.875rem',
-                  boxShadow: '0 1px 3px rgb(0 0 0 / 0.05)',
-                  transition: 'box-shadow 0.15s, transform 0.15s',
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgb(0 0 0 / 0.08)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgb(0 0 0 / 0.05)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                >
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
                   <div style={{
-                    width: 40, height: 40, borderRadius: 10,
-                    background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    width: 44, height: 44, borderRadius: 12,
+                    background: s.bg, display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', flexShrink: 0,
                   }}>
-                    <Icon style={{ width: 18, height: 18, color: s.color }} />
+                    <Icon style={{ width: 20, height: 20, color: s.color }} />
                   </div>
                   <div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: s.color, lineHeight: 1, letterSpacing: '-0.04em' }}>
-                      {s.value}
+                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.1, letterSpacing: '-0.03em' }}>
+                      {loading ? '—' : s.value}
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, marginTop: 2, lineHeight: 1.3 }}>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500, marginTop: 2 }}>
                       {s.label}
                     </div>
                   </div>
@@ -258,61 +253,53 @@ export const HomePage = () => {
             })}
           </div>
           <style>{`
-            @media (min-width: 640px) { .stats-grid { grid-template-columns: repeat(4, 1fr) !important; } }
+            @media (min-width: 640px) {
+              .stats-grid { grid-template-columns: repeat(4, 1fr) !important; }
+            }
           `}</style>
         </div>
       </section>
 
-      {/* ── Features ─────────────────────────────────────────────────────── */}
-      <section style={{ padding: '4rem 0', background: '#fff', borderBottom: '1px solid #e5e7eb' }}>
+      {/* ── Features Grid ─────────────────────────────────────────────────── */}
+      <section style={{ padding: '3.5rem 0', background: '#f9fafb' }}>
         <div className="container">
-          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-            <div className="eyebrow" style={{ marginBottom: '0.875rem' }}>
-              What's Inside
-            </div>
-            <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 800, color: '#0f172a', marginBottom: '0.625rem' }}>
-              Everything you need to crack placements
+          <div style={{ textAlign: 'center', maxWidth: 520, margin: '0 auto 2.5rem' }}>
+            <h2 style={{ fontSize: '1.625rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: '0.5rem' }}>
+              Everything You Need to Prepare
             </h2>
-            <p style={{ color: '#6b7280', fontSize: '0.9375rem', maxWidth: 500, margin: '0 auto' }}>
-              Comprehensive resources built from real GECR student experiences.
+            <p style={{ fontSize: '0.9375rem', color: '#64748b', lineHeight: 1.6 }}>
+              Structured, verified content collected directly from GECR campus interview rounds.
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1rem' }} className="features-grid">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1.25rem' }} className="features-grid">
             {FEATURES.map((f, i) => {
               const Icon = f.icon;
               return (
-                <Link key={i} to={f.href} style={{
-                  display: 'block',
+                <div key={i} style={{
                   background: '#fff', border: '1px solid #e5e7eb',
-                  borderRadius: 16, padding: '1.5rem',
-                  textDecoration: 'none', color: 'inherit',
-                  transition: 'all 0.2s',
-                  position: 'relative', overflow: 'hidden',
+                  borderRadius: 16, padding: '1.75rem',
+                  display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                  transition: 'all 0.2s ease',
                 }}
-                  onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgb(0 0 0 / 0.08)'; e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = f.iconColor; e.currentTarget.style.boxShadow = `0 8px 24px ${f.iconColor}14`; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}
                 >
-                  <div style={{
-                    width: 44, height: 44, borderRadius: 12,
-                    background: f.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    marginBottom: '1.125rem',
-                  }}>
-                    <Icon style={{ width: 22, height: 22, color: f.iconColor }} />
+                  <div>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: f.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.125rem' }}>
+                      <Icon style={{ width: 22, height: 22, color: f.iconColor }} />
+                    </div>
+                    <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>{f.title}</h3>
+                    <p style={{ fontSize: '0.875rem', color: '#64748b', lineHeight: 1.65, marginBottom: '1.25rem' }}>{f.desc}</p>
                   </div>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>
-                    {f.title}
-                  </h3>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.65, marginBottom: '1.25rem' }}>
-                    {f.desc}
-                  </p>
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
-                    fontSize: '0.8125rem', fontWeight: 600, color: f.ctaColor,
+                  <Link to={f.href} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
+                    fontSize: '0.875rem', fontWeight: 600, color: f.ctaColor,
+                    textDecoration: 'none',
                   }}>
                     {f.cta} <ArrowRight style={{ width: 14, height: 14 }} />
-                  </span>
-                </Link>
+                  </Link>
+                </div>
               );
             })}
           </div>
@@ -323,119 +310,33 @@ export const HomePage = () => {
         </div>
       </section>
 
-      {/* ── Practice CTA ──────────────────────────────────────────────────── */}
-      <section style={{ padding: '3.5rem 0', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-        <div className="container">
-          <div style={{
-            background: 'linear-gradient(135deg, #0f2d5e 0%, #1a56db 100%)',
-            borderRadius: 20, padding: '2.5rem 2rem',
-            display: 'flex', flexDirection: 'column', gap: '1.5rem',
-          }} className="practice-cta">
-            <div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.25rem 0.75rem', borderRadius: 999, background: 'rgba(255,255,255,0.15)',
-                fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', color: '#93c5fd',
-                textTransform: 'uppercase', marginBottom: '0.875rem',
-              }}>
-                Practice Arena
-              </div>
-              <h2 style={{ fontSize: 'clamp(1.375rem, 3vw, 1.875rem)', fontWeight: 800, color: '#fff', marginBottom: '0.625rem', letterSpacing: '-0.025em' }}>
-                Practice DSA & SQL questions<br />from real GECR placements
-              </h2>
-              <p style={{ color: '#93c5fd', fontSize: '0.9375rem', lineHeight: 1.65 }}>
-                Curated problems from LeetCode, GeeksforGeeks, HackerRank and more —
-                filtered by company, topic, and difficulty.
-              </p>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-              <Link to="/practice" style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.6875rem 1.5rem', borderRadius: 12,
-                background: '#fff', color: '#1a56db',
-                fontSize: '0.875rem', fontWeight: 700,
-                textDecoration: 'none', transition: 'all 0.15s',
-              }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'translateY(0)'; }}
-              >
-                <Code2 style={{ width: 15, height: 15 }} />
-                <span>Browse All Practice</span>
-              </Link>
-              <Link to="/practice/dsa" style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.6875rem 1.25rem', borderRadius: 12,
-                background: 'rgba(255,255,255,0.12)', color: '#e0f2fe',
-                fontSize: '0.875rem', fontWeight: 600,
-                textDecoration: 'none', transition: 'all 0.15s',
-                border: '1px solid rgba(255,255,255,0.2)',
-              }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
-              >
-                DSA Problems
-              </Link>
-              <Link to="/practice/sql" style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.6875rem 1.25rem', borderRadius: 12,
-                background: 'rgba(255,255,255,0.12)', color: '#e0f2fe',
-                fontSize: '0.875rem', fontWeight: 600,
-                textDecoration: 'none', transition: 'all 0.15s',
-                border: '1px solid rgba(255,255,255,0.2)',
-              }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
-              >
-                SQL Practice
-              </Link>
-            </div>
-          </div>
-          <style>{`
-            @media (min-width: 768px) {
-              .practice-cta { flex-direction: row !important; align-items: center; justify-content: space-between; }
-              .practice-cta > div:first-child { flex: 1; }
-              .practice-cta > div:last-child { flex-shrink: 0; flex-direction: column; align-items: flex-start; }
-            }
-          `}</style>
-        </div>
-      </section>
-
       {/* ── Featured Companies ────────────────────────────────────────────── */}
-      <section style={{ padding: '4rem 0 3rem', background: '#fff' }}>
+      <section style={{ padding: '3.5rem 0', background: '#fff', borderTop: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb' }}>
         <div className="container">
-          <div style={{
-            display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start',
-            justifyContent: 'space-between', gap: '1rem', marginBottom: '2rem',
-          }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
-              <div className="eyebrow" style={{ marginBottom: '0.625rem' }}>
-                <Star style={{ width: 10, height: 10 }} />
-                Priority Companies
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#2563eb', marginBottom: '0.25rem' }}>
+                Featured Recruiter Drives
               </div>
-              <h2 style={{ fontSize: 'clamp(1.375rem, 3vw, 1.75rem)', fontWeight: 800, color: '#0f172a', marginBottom: '0.375rem' }}>
-                Recruiting Companies & Processes
+              <h2 style={{ fontSize: '1.625rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.025em', margin: 0 }}>
+                Top Recruiting Companies
               </h2>
-              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-                Real multi-round breakdowns, selection criteria, and candidate tips.
-              </p>
             </div>
             <Link to="/companies" style={{
               display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
-              fontSize: '0.875rem', fontWeight: 600, color: '#2563eb',
-              textDecoration: 'none', flexShrink: 0,
+              fontSize: '0.875rem', fontWeight: 600, color: '#2563eb', textDecoration: 'none',
             }}>
-              View All ({stats.companiesCount}) <ChevronRight style={{ width: 14, height: 14 }} />
+              Browse all {stats.companiesCount} companies <ArrowRight style={{ width: 14, height: 14 }} />
             </Link>
           </div>
 
           {loading ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1rem' }} className="companies-grid">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <CompanyCardSkeleton key={i} />
-              ))}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1.25rem' }} className="companies-grid">
+              {[1, 2, 3, 4, 5, 6].map(i => <CompanyCardSkeleton key={i} />)}
             </div>
           ) : featuredCompanies.length > 0 ? (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1rem' }} className="companies-grid">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1.25rem' }} className="companies-grid">
                 {featuredCompanies.map(c => <CompanyCard key={c._id} company={c} />)}
               </div>
               <div style={{ textAlign: 'center', marginTop: '2rem' }}>
@@ -519,3 +420,5 @@ export const HomePage = () => {
     </div>
   );
 };
+
+export default HomePage;

@@ -24,4 +24,16 @@ const authLimiter = rateLimit({
   },
 });
 
-module.exports = { apiLimiter, authLimiter };
+// Rate limiter for public anonymous visitor tracking
+const analyticsTrackingLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: process.env.NODE_ENV === 'development' ? 500 : 120, // 120 tracking events/min per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Analytics tracking rate limit exceeded',
+  },
+});
+
+module.exports = { apiLimiter, authLimiter, analyticsTrackingLimiter };

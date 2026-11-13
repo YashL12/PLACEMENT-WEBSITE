@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { tracker } from '../services/tracker';
 
 const DIFF_STYLES = {
   Easy:   { bg: '#f0fdf4', color: '#166534', border: '#bbf7d0', dot: '#22c55e' },
@@ -37,8 +38,19 @@ export const CodingWorkspacePage = () => {
     api.getCodingQuestionBySlug(slug)
       .then(res => {
         if (!mounted) return;
-        if (res.success && res.data) setQuestion(res.data);
-        else setError(res.message || 'Question not found');
+        if (res.success && res.data) {
+          const q = res.data;
+          setQuestion(q);
+          tracker.trackPracticeView({
+            questionId: q._id,
+            title: q.title,
+            category: q.category,
+            difficulty: q.difficulty,
+            topic: q.topic,
+          });
+        } else {
+          setError(res.message || 'Question not found');
+        }
       })
       .catch(() => { if (mounted) setError('Failed to load question.'); })
       .finally(() => { if (mounted) setLoading(false); });
@@ -47,6 +59,7 @@ export const CodingWorkspacePage = () => {
 
   const handleShare = async () => {
     const url = window.location.href;
+    tracker.trackFeatureClick('share_coding_question', { title: question?.title });
     if (navigator.share) {
       try { await navigator.share({ title: question?.title, url }); return; } catch {}
     }
@@ -272,6 +285,15 @@ export const CodingWorkspacePage = () => {
 
               {question.externalUrl ? (
                 <a href={question.externalUrl} target="_blank" rel="noopener noreferrer"
+                  onClick={() => {
+                    tracker.trackEvent('practice_solve_click', {
+                      questionId: question._id,
+                      title: question.title,
+                      platform,
+                      category: question.category,
+                      url: question.externalUrl,
+                    });
+                  }}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
                     padding: '0.75rem 1.5rem', borderRadius: 12,
@@ -343,3 +365,5 @@ export const CodingWorkspacePage = () => {
     </div>
   );
 };
+
+export default CodingWorkspacePage;

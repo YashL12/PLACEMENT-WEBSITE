@@ -8,11 +8,13 @@ import {
   Briefcase,
   Star,
   X,
+  GraduationCap,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
 import { AlumniAvatar } from '../components/AlumniAvatar';
+import { tracker } from '../services/tracker';
 
 export const AlumniPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -36,6 +38,7 @@ export const AlumniPage = () => {
         if (res.success && res.data) {
           setAlumni(res.data.alumni || []);
           setPagination(res.data.pagination);
+          tracker.trackFeatureClick('alumni_directory_viewed');
         }
       } catch (err) {
         console.error('Failed to load alumni directory:', err);
@@ -51,6 +54,9 @@ export const AlumniPage = () => {
     const params = new URLSearchParams(searchParams);
     if (val.trim()) {
       params.set('search', val.trim());
+      if (val.trim().length >= 2) {
+        tracker.trackSearch(val.trim(), 'alumni');
+      }
     } else {
       params.delete('search');
     }
@@ -100,7 +106,7 @@ export const AlumniPage = () => {
             {searchQuery && (
               <button
                 onClick={handleClearSearch}
-                className="flex-shrink-0 mr-1 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                className="flex-shrink-0 mr-1 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                 aria-label="Clear search"
               >
                 <X className="w-4 h-4" />
@@ -124,7 +130,7 @@ export const AlumniPage = () => {
           {searchQuery && (
             <button
               onClick={handleClearSearch}
-              className="text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+              className="text-blue-600 hover:text-blue-800 font-semibold transition-colors cursor-pointer"
             >
               Clear search
             </button>
@@ -221,6 +227,13 @@ const AlumniMemberCard = ({ member }) => {
               <p className="text-xs text-slate-400 mt-1">GECR Graduate</p>
             )}
 
+            {member.graduationYear && (
+              <div className="flex items-center gap-1 mt-1 text-xs text-slate-400">
+                <GraduationCap className="w-3 h-3 text-slate-300 flex-shrink-0" aria-hidden="true" />
+                <span>Class of {member.graduationYear}</span>
+              </div>
+            )}
+
             <div className="flex items-center gap-1 mt-1.5 text-xs font-semibold text-blue-700">
               <Building2 className="w-3 h-3 text-blue-500 flex-shrink-0" aria-hidden="true" />
               <span className="line-clamp-1">{member.companyName}</span>
@@ -237,7 +250,14 @@ const AlumniMemberCard = ({ member }) => {
             href={member.linkedinUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold transition-colors shadow-xs"
+            onClick={() => {
+              tracker.trackEvent('alumni_linkedin_click', {
+                alumnusId: member._id,
+                name: member.name,
+                company: member.companyName,
+              });
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer"
             style={{ background: '#0a66c2' }}
             aria-label={`View ${member.name}'s LinkedIn profile (opens in new tab)`}
           >
@@ -254,3 +274,5 @@ const AlumniMemberCard = ({ member }) => {
     </article>
   );
 };
+
+export default AlumniPage;

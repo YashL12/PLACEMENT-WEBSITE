@@ -1,7 +1,8 @@
 import React from 'react';
 
 const typeStyles = {
-  // Years
+  // Years (Three Data Categories: 2024, 2025, Report – 2026)
+  year2026: 'bg-purple-50 text-purple-700 border-purple-200',
   year2025: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   year2024: 'bg-blue-50 text-blue-700 border-blue-200',
   yearUnknown: 'bg-slate-100 text-slate-700 border-slate-200',
@@ -22,6 +23,15 @@ const typeStyles = {
   published: 'bg-green-50 text-green-700 border-green-200',
   review: 'bg-amber-100 text-amber-900 border-amber-300',
   draft: 'bg-slate-100 text-slate-600 border-slate-300',
+};
+
+export const formatYearLabel = (year) => {
+  if (year === 2026 || year === '2026' || year === 'report' || year === 'report-2026') {
+    return 'Report – 2026';
+  }
+  if (year === 2025 || year === '2025') return '2025';
+  if (year === 2024 || year === '2024') return '2024';
+  return year ? `Season ${year}` : 'Report – 2026';
 };
 
 export const Badge = ({ children, variant = 'Other', className = '' }) => {

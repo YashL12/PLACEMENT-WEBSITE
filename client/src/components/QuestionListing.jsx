@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { tracker } from '../services/tracker';
 
 const DIFFICULTIES = ['All', 'Easy', 'Medium', 'Hard'];
 
@@ -106,236 +107,212 @@ const QuestionRow = ({ q }) => {
 
       {/* Right: platform + action */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexShrink: 0 }}>
-        <PlatformBadge platform={q.platform || 'LeetCode'} />
-        {q.externalUrl ? (
-          <a href={q.externalUrl} target="_blank" rel="noopener noreferrer"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-              padding: '0.375rem 0.75rem', borderRadius: 8,
-              background: '#2563eb', color: '#fff',
-              fontSize: '0.75rem', fontWeight: 700,
-              textDecoration: 'none', transition: 'all 0.12s', flexShrink: 0,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.transform = 'translateY(0)'; }}
-          >
-            Practice <ExternalLink style={{ width: 11, height: 11 }} />
-          </a>
-        ) : (
-          <Link to={`/practice/${q.slug}`}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-              padding: '0.375rem 0.75rem', borderRadius: 8,
-              background: '#f3f4f6', color: '#374151',
-              fontSize: '0.75rem', fontWeight: 600,
-              textDecoration: 'none', transition: 'background 0.12s', flexShrink: 0,
-            }}
-          >
-            View
-          </Link>
-        )}
+        <PlatformBadge platform={q.platform} />
+        <Link to={`/practice/${q.slug}`} style={{
+          display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+          padding: '0.35rem 0.75rem', borderRadius: 8,
+          background: '#f9fafb', border: '1px solid #e5e7eb',
+          fontSize: '0.75rem', fontWeight: 600, color: '#2563eb',
+          textDecoration: 'none', transition: 'all 0.12s',
+        }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.color = '#fff'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.style.color = '#2563eb'; }}
+        >
+          View Problem
+        </Link>
       </div>
     </div>
   );
 };
 
-/**
- * Shared question listing component for DSA and SQL practice pages.
- * category: 'DSA' | 'SQL'
- * topics: string[] — available topic filter options
- * backLink/backLabel: for breadcrumb
- */
-export const QuestionListing = ({
-  category,
-  topics = [],
-  accentColor = '#2563eb',
-  accentBg = '#eff6ff',
-  title,
-  subtitle,
-  icon: HeaderIcon,
-}) => {
+export const QuestionListing = ({ category, title, description, accentColor = '#2563eb' }) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const selectedTopic      = searchParams.get('topic')      || 'All';
-  const selectedDifficulty = searchParams.get('difficulty') || 'All';
-  const selectedPlatform   = searchParams.get('platform')   || 'All';
+  const [questions, setQuestions]       = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [loadingMore, setLoadingMore]   = useState(false);
+  const [hasMore, setHasMore]           = useState(false);
+  const [page, setPage]                 = useState(1);
+  const [matchCount, setMatchCount]     = useState(0);
+
+  const [topicOptions, setTopicOptions] = useState(['All']);
+  const [platforms, setPlatforms]       = useState([]);
+
+  // URL-driven filter states
   const searchQuery        = searchParams.get('q')          || '';
-  const sortOrder          = searchParams.get('order')      || 'asc';
+  const selectedDifficulty = searchParams.get('difficulty') || 'All';
+  const selectedTopic      = searchParams.get('topic')      || 'All';
+  const selectedPlatform   = searchParams.get('platform')   || 'All';
 
-  const [searchTerm, setSearchTerm]   = useState(searchQuery);
-  const [questions, setQuestions]     = useState([]);
-  const [totalCount, setTotalCount]   = useState(0);
-  const [matchCount, setMatchCount]   = useState(0);
-  const [platforms, setPlatforms]     = useState([]);
-  const [page, setPage]               = useState(1);
-  const [hasMore, setHasMore]         = useState(false);
-  const [loading, setLoading]         = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const debounceRef = useRef(null);
+  const [inputSearch, setInputSearch] = useState(searchQuery);
+  const searchDebounceTimer = useRef(null);
 
-  const updateParam = useCallback((key, value) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      if (!value || value === 'All' || value === '') next.delete(key);
-      else next.set(key, value);
-      return next;
-    });
-    setPage(1);
-  }, [setSearchParams]);
+  // Sync input with URL
+  useEffect(() => { setInputSearch(searchQuery); }, [searchQuery]);
 
-  const handleReset = () => {
-    setSearchTerm('');
-    setSearchParams({});
+  // Load topics & platforms metadata once
+  useEffect(() => {
+    api.getCodingMeta()
+      .then(res => {
+        if (!res.success || !res.data) return;
+        const d = res.data;
+        if (category === 'DSA' && d.topics) {
+          setTopicOptions(['All', ...d.topics.map(t => t.topic)]);
+        } else if (category === 'SQL' && d.sqlTopics) {
+          setTopicOptions(['All', ...d.sqlTopics.map(t => t.topic)]);
+        }
+        if (d.platforms) setPlatforms(d.platforms);
+      })
+      .catch(() => {});
+  }, [category]);
+
+  const updateParam = (key, val) => {
+    const next = new URLSearchParams(searchParams);
+    if (!val || val === 'All' || val === '') {
+      next.delete(key);
+    } else {
+      next.set(key, val);
+    }
+    setSearchParams(next, { replace: true });
     setPage(1);
   };
 
-  // Load category-level meta once
-  useEffect(() => {
-    api.getCodingMeta().then(res => {
-      if (res.success && res.data) {
-        const catPlatforms = (res.data.platforms || []);
-        setPlatforms(catPlatforms);
-        setTotalCount(category === 'DSA' ? res.data.codingCount : res.data.sqlCount);
+  const handleSearchChange = (e) => {
+    const v = e.target.value;
+    setInputSearch(v);
+    clearTimeout(searchDebounceTimer.current);
+    searchDebounceTimer.current = setTimeout(() => {
+      updateParam('q', v);
+      if (v.trim().length >= 2) {
+        tracker.trackSearch(v.trim(), 'practice');
       }
-    }).catch(() => {});
-  }, [category]);
+    }, 300);
+  };
 
-  // Reset page to 1 when any filter changes
-  useEffect(() => {
+  const handleClearSearch = () => {
+    setInputSearch('');
+    updateParam('q', '');
+  };
+
+  const handleReset = () => {
+    setInputSearch('');
+    setSearchParams({}, { replace: true });
     setPage(1);
-  }, [category, selectedTopic, selectedDifficulty, selectedPlatform, searchQuery, sortOrder]);
+  };
 
   // Fetch questions
   useEffect(() => {
     let mounted = true;
-    const fetch = async () => {
-      try {
-        if (page === 1) setLoading(true); else setLoadingMore(true);
-        const params = { category, page, limit: 30, sort: sortOrder === 'asc' ? 'difficulty-asc' : 'difficulty-desc' };
-        if (selectedTopic !== 'All') params.topic = selectedTopic;
-        if (selectedDifficulty !== 'All') params.difficulty = selectedDifficulty;
-        if (selectedPlatform !== 'All') params.platform = selectedPlatform;
-        if (searchQuery) params.search = searchQuery;
+    const isFirstPage = page === 1;
+    if (isFirstPage) setLoading(true);
+    else setLoadingMore(true);
 
-        const res = await api.getCodingQuestions(params);
-        if (mounted && res.success && res.data) {
-          const q = res.data.questions || [];
-          setMatchCount(res.data.pagination?.total || 0);
-          setHasMore(Boolean(res.data.pagination?.hasMore));
-          setQuestions(prev => page === 1 ? q : [...prev, ...q]);
-        }
-      } catch (e) { console.error(e); }
-      finally { if (mounted) { setLoading(false); setLoadingMore(false); } }
+    const params = {
+      category,
+      page,
+      limit: 25,
     };
-    fetch();
+    if (searchQuery)                            params.q          = searchQuery;
+    if (selectedDifficulty && selectedDifficulty !== 'All') params.difficulty = selectedDifficulty;
+    if (selectedTopic      && selectedTopic      !== 'All') params.topic      = selectedTopic;
+    if (selectedPlatform   && selectedPlatform   !== 'All') params.platform   = selectedPlatform;
+
+    api.getCodingQuestions(params)
+      .then(res => {
+        if (!mounted) return;
+        if (res.success && res.data) {
+          const { questions: fetched, pagination } = res.data;
+          setQuestions(prev => isFirstPage ? fetched : [...prev, ...fetched]);
+          setHasMore(pagination.page < pagination.totalPages);
+          setMatchCount(pagination.total);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!mounted) return;
+        setLoading(false);
+        setLoadingMore(false);
+      });
+
     return () => { mounted = false; };
-  }, [category, selectedTopic, selectedDifficulty, selectedPlatform, searchQuery, sortOrder, page]);
+  }, [category, page, searchQuery, selectedDifficulty, selectedTopic, selectedPlatform]);
 
-  const hasFilters = selectedTopic !== 'All' || selectedDifficulty !== 'All' || selectedPlatform !== 'All' || Boolean(searchQuery);
-
-  const topicOptions = ['All', ...topics];
+  const hasActiveFilters = Boolean(searchQuery || selectedDifficulty !== 'All' || selectedTopic !== 'All' || selectedPlatform !== 'All');
 
   return (
-    <div style={{ background: '#f9fafb', minHeight: '100vh' }}>
+    <div style={{ background: '#f9fafb', minHeight: '100vh', paddingBottom: '4rem' }}>
       {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '2rem 0 1.75rem' }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '2rem 0 1.5rem' }}>
         <div className="container">
-          <Link to="/practice" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', textDecoration: 'none', marginBottom: '1rem', transition: 'color 0.1s' }}
-            onMouseEnter={e => e.currentTarget.style.color = '#2563eb'}
-            onMouseLeave={e => e.currentTarget.style.color = '#6b7280'}
-          >
-            <ArrowLeft style={{ width: 14, height: 14 }} /> Back to Practice
-          </Link>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: accentBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {HeaderIcon && <HeaderIcon style={{ width: 20, height: 20, color: accentColor }} />}
-                </div>
-                <h1 style={{ fontSize: 'clamp(1.375rem, 3vw, 2rem)', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', margin: 0 }}>
-                  {title}
-                </h1>
-              </div>
-              <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>{subtitle}</p>
-            </div>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '1rem',
-              padding: '0.875rem 1.25rem', borderRadius: 12,
-              background: accentBg, border: `1px solid ${accentColor}22`,
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+            <Link to="/practice" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+              fontSize: '0.8125rem', color: '#6b7280', textDecoration: 'none', fontWeight: 500,
             }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: accentColor, lineHeight: 1 }}>{totalCount}</div>
-                <div style={{ fontSize: '0.6875rem', color: '#6b7280', fontWeight: 500 }}>Questions</div>
-              </div>
-            </div>
+              <ArrowLeft style={{ width: 14, height: 14 }} /> Practice
+            </Link>
+            <span style={{ color: '#d1d5db' }}>/</span>
+            <span style={{ fontSize: '0.8125rem', color: '#111827', fontWeight: 600 }}>{category}</span>
           </div>
+
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', margin: '0 0 0.375rem' }}>
+            {title}
+          </h1>
+          <p style={{ fontSize: '0.9375rem', color: '#6b7280', margin: 0, maxWidth: 640 }}>
+            {description}
+          </p>
         </div>
       </div>
 
-      <div className="container" style={{ padding: '1.75rem 1.25rem' }}>
-        {/* Filter Bar */}
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '1rem 1.25rem', marginBottom: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-          {/* Search + Sort */}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, position: 'relative', minWidth: 200 }}>
-              <Search style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, color: '#9ca3af', pointerEvents: 'none' }} />
+      <div className="container" style={{ paddingTop: '1.5rem' }}>
+        {/* Controls Card */}
+        <div style={{
+          background: '#fff', border: '1px solid #e5e7eb',
+          borderRadius: 16, padding: '1.25rem', marginBottom: '1.25rem',
+          boxShadow: '0 1px 3px rgb(0 0 0 / 0.04)',
+        }}>
+          {/* Row 1: Search */}
+          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.875rem' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <Search style={{ width: 16, height: 16, color: '#9ca3af', position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="text"
-                value={searchTerm}
-                onChange={e => {
-                  setSearchTerm(e.target.value);
-                  clearTimeout(debounceRef.current);
-                  debounceRef.current = setTimeout(() => updateParam('q', e.target.value.trim()), 350);
-                }}
-                placeholder={`Search ${category} questions...`}
+                value={inputSearch}
+                onChange={handleSearchChange}
+                placeholder={`Search ${category} by title, topic, company...`}
                 style={{
-                  width: '100%', paddingLeft: '2.25rem', paddingRight: searchTerm ? '2.25rem' : '0.875rem',
-                  paddingTop: '0.5rem', paddingBottom: '0.5rem',
-                  background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10,
-                  fontSize: '0.875rem', color: '#111827', outline: 'none', transition: 'border-color 0.15s',
+                  width: '100%', padding: '0.55rem 2.25rem 0.55rem 2.25rem',
+                  border: '1px solid #d1d5db', borderRadius: 10,
+                  fontSize: '0.875rem', color: '#111827', outline: 'none',
+                  background: '#f9fafb', boxSizing: 'border-box',
                 }}
-                onFocus={e => e.target.style.borderColor = '#2563eb'}
-                onBlur={e => e.target.style.borderColor = '#e5e7eb'}
               />
-              {searchTerm && (
-                <button onClick={() => { setSearchTerm(''); updateParam('q', ''); }}
-                  style={{ position: 'absolute', right: '0.625rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: '#9ca3af' }}>
+              {inputSearch && (
+                <button onClick={handleClearSearch} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center' }}>
                   <X style={{ width: 14, height: 14 }} />
                 </button>
               )}
             </div>
-            <button onClick={() => updateParam('order', sortOrder === 'asc' ? 'desc' : 'asc')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.375rem',
-                padding: '0.5rem 0.875rem', borderRadius: 10,
-                background: '#f3f4f6', border: '1px solid #e5e7eb',
-                fontSize: '0.8125rem', fontWeight: 600, color: '#374151', cursor: 'pointer',
-                transition: 'all 0.12s', flexShrink: 0,
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = '#e5e7eb'}
-              onMouseLeave={e => e.currentTarget.style.background = '#f3f4f6'}
-            >
-              <ArrowUpDown style={{ width: 13, height: 13, color: '#6b7280' }} />
-              {sortOrder === 'asc' ? 'Easy → Hard' : 'Hard → Easy'}
-            </button>
-            {hasFilters && (
+            {hasActiveFilters && (
               <button onClick={handleReset} style={{
-                display: 'flex', alignItems: 'center', gap: '0.375rem',
-                padding: '0.5rem 0.875rem', borderRadius: 10, border: 'none',
-                background: 'none', fontSize: '0.8125rem', fontWeight: 600,
-                color: '#dc2626', cursor: 'pointer',
+                padding: '0.55rem 0.875rem', borderRadius: 10,
+                background: '#f3f4f6', border: '1px solid #e5e7eb',
+                fontSize: '0.8125rem', fontWeight: 600, color: '#4b5563',
+                cursor: 'pointer', whiteSpace: 'nowrap',
               }}>
-                <RefreshCw style={{ width: 13, height: 13 }} /> Reset
+                Reset
               </button>
             )}
           </div>
 
-          {/* Filter Row */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
-            {/* Difficulty tabs */}
-            <div style={{ display: 'flex', gap: '0.375rem' }}>
+          {/* Row 2: Filters */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.625rem', alignItems: 'center' }}>
+            {/* Difficulty Pills */}
+            <div style={{ display: 'flex', gap: '0.25rem' }}>
               {DIFFICULTIES.map(d => (
-                <button key={d} onClick={() => updateParam('difficulty', d)}
+                <button
+                  key={d}
+                  onClick={() => updateParam('difficulty', d)}
                   style={{
                     padding: '0.3rem 0.75rem', borderRadius: 999,
                     fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
@@ -440,3 +417,5 @@ export const QuestionListing = ({
     </div>
   );
 };
+
+export default QuestionListing;

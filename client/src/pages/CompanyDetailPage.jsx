@@ -1,28 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
-  Building2,
-  Calendar,
-  Layers,
-  Lightbulb,
-  ExternalLink,
-  ChevronLeft,
-  Share2,
-  FileText,
-  GitBranch,
-  FolderArchive,
-  Users,
-  Link2,
-  Code2,
+  Building2, Calendar, Layers, Lightbulb, ExternalLink,
+  ChevronLeft, Share2, FileText, GitBranch, FolderArchive,
+  Users, Link2, Code2,
 } from 'lucide-react';
 import { api } from '../services/api';
-import { Badge } from '../components/Badge';
+import { Badge, formatYearLabel } from '../components/Badge';
 import { RoundAccordion } from '../components/RoundAccordion';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CompanyDetailSkeleton } from '../components/CompanyDetailSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CompanyLogo } from '../components/CompanyLogo';
 import { AlumniAvatar } from '../components/AlumniAvatar';
+import { tracker } from '../services/tracker';
 
 export const CompanyDetailPage = () => {
   const { id } = useParams();
@@ -50,6 +41,13 @@ export const CompanyDetailPage = () => {
             setActiveExperienceId(res.data.experiences[0]._id);
           }
 
+          // Track company view telemetry
+          tracker.trackEvent('company_view', {
+            companyId: compData._id,
+            companyName: compData.name,
+            placementYears: compData.placementYears,
+          });
+
           // Fetch alumni for this company
           try {
             const alumRes = await api.getAlumni({ company: compData.name });
@@ -74,6 +72,7 @@ export const CompanyDetailPage = () => {
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
+    tracker.trackFeatureClick('share_company', { company: company?.name });
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -86,7 +85,7 @@ export const CompanyDetailPage = () => {
       <div className="max-w-4xl mx-auto px-4 py-16">
         <EmptyState
           title="Company not found"
-          description={error || "The company you requested does not exist or has not been published yet."}
+          description={error || 'The company you requested does not exist or has not been published yet.'}
           actionLabel="Back to all companies"
           onAction={() => navigate('/companies')}
         />
@@ -165,7 +164,7 @@ export const CompanyDetailPage = () => {
             </div>
           </div>
 
-          {/* Quick Badges */}
+          {/* Quick Badges: Three Data Categories (2024, 2025, Report – 2026) */}
           <div className="flex flex-row md:flex-col items-start md:items-end gap-2 flex-wrap">
             <div className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -174,12 +173,15 @@ export const CompanyDetailPage = () => {
             <div className="flex gap-1.5 flex-wrap">
               {company.placementYears && company.placementYears.length > 0 ? (
                 company.placementYears.map((yr) => (
-                  <Badge key={yr} variant={yr === 2025 ? 'year2025' : 'year2024'}>
-                    Season {yr}
+                  <Badge
+                    key={yr}
+                    variant={yr === 2026 ? 'year2026' : yr === 2025 ? 'year2025' : 'year2024'}
+                  >
+                    {formatYearLabel(yr)}
                   </Badge>
                 ))
               ) : (
-                <Badge variant="yearUnknown">Recorded</Badge>
+                <Badge variant="year2026">Report – 2026</Badge>
               )}
             </div>
           </div>
@@ -197,7 +199,7 @@ export const CompanyDetailPage = () => {
           <div className="mt-6 p-4 rounded-xl bg-amber-50/80 border border-amber-200/80">
             <div className="flex items-center gap-2 text-amber-900 font-semibold text-sm mb-2.5">
               <Lightbulb className="w-4 h-4 text-amber-600 flex-shrink-0" />
-              <span>Key Preparation & Interview Advice for {company.name}</span>
+              <span>Key Preparation &amp; Interview Advice for {company.name}</span>
             </div>
             <ul className="space-y-2 text-xs sm:text-sm text-amber-950 pl-5 list-disc leading-relaxed">
               {company.generalAdvice.map((item, idx) => (
@@ -217,7 +219,7 @@ export const CompanyDetailPage = () => {
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900 tracking-tight">
-                Alumni Network & Guidance for {company.name}
+                Alumni Network &amp; Guidance for {company.name}
               </h2>
               <p className="text-xs text-slate-500">
                 Connect with GECR Computer Department alumni working at {company.name}
@@ -237,7 +239,6 @@ export const CompanyDetailPage = () => {
                 className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-slate-50 transition-colors flex items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  {/* Alumnus Profile Photo (never company logo) */}
                   <AlumniAvatar
                     src={alum.profilePhoto}
                     name={alum.name}
@@ -254,12 +255,18 @@ export const CompanyDetailPage = () => {
                   </div>
                 </div>
 
-                {/* LinkedIn Profile Button */}
                 <a
                   href={alum.linkedinUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0a66c2] hover:bg-[#004182] text-white rounded-lg text-xs font-semibold transition-colors flex-shrink-0 shadow-2xs"
+                  onClick={() => {
+                    tracker.trackEvent('alumni_linkedin_click', {
+                      company: company.name,
+                      alumnusName: alum.name,
+                      alumnusId: alum._id,
+                    });
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0a66c2] hover:bg-[#004182] text-white rounded-lg text-xs font-semibold transition-colors flex-shrink-0 shadow-2xs cursor-pointer"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span>LinkedIn</span>
@@ -269,7 +276,7 @@ export const CompanyDetailPage = () => {
           </div>
         ) : (
           <div className="py-6 text-center text-xs text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-            No alumni profiles currently registered for {company.name}. Department alumni working here are invited to connect with the Training & Placement cell.
+            No alumni profiles currently registered for {company.name}. Department alumni working here are invited to connect with the Training &amp; Placement cell.
           </div>
         )}
       </div>
@@ -287,16 +294,21 @@ export const CompanyDetailPage = () => {
                 </span>
               </div>
               <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-                {experiences.map((exp, idx) => {
+                {experiences.map((exp) => {
                   const isActive = exp._id === activeExp?._id;
-                  const yearLabel = exp.placementYear
-                    ? `Season ${exp.placementYear}`
-                    : 'Recorded Experience';
+                  const yearLabel = formatYearLabel(exp.placementYear);
 
                   return (
                     <button
                       key={exp._id}
-                      onClick={() => setActiveExperienceId(exp._id)}
+                      onClick={() => {
+                        setActiveExperienceId(exp._id);
+                        tracker.trackEvent('experience_tab_switch', {
+                          company: company.name,
+                          season: yearLabel,
+                          role: exp.role || 'Software Engineer',
+                        });
+                      }}
                       className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer border ${
                         isActive
                           ? 'bg-blue-700 text-white border-blue-700 shadow-2xs'
@@ -327,19 +339,13 @@ export const CompanyDetailPage = () => {
                       <span className="text-lg font-bold text-slate-900 tracking-tight">
                         {activeExp.role || 'Software Engineer'}
                       </span>
-                      {activeExp.placementYear ? (
-                        <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold text-xs border border-blue-200">
-                          Season {activeExp.placementYear}
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold text-xs border border-slate-200">
-                          Placement Archive Record
-                        </span>
-                      )}
+                      <Badge variant={activeExp.placementYear === 2026 ? 'year2026' : activeExp.placementYear === 2025 ? 'year2025' : 'year2024'}>
+                        {formatYearLabel(activeExp.placementYear)}
+                      </Badge>
                     </div>
                     <span className="text-xs text-slate-400 flex items-center gap-1.5">
                       <FolderArchive className="w-3.5 h-3.5" />
-                      <span>Source: {activeExp.sourceDocument} ({activeExp.sourcePage || 'Reported'})</span>
+                      <span>Source: {activeExp.sourceDocument || 'Placement Records'} ({activeExp.sourcePage || 'Reported'})</span>
                     </span>
                   </div>
 
@@ -359,7 +365,7 @@ export const CompanyDetailPage = () => {
                 {activeExp.advice && activeExp.advice.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-slate-100">
                     <span className="text-xs font-bold uppercase tracking-wider text-amber-800 block mb-2">
-                      Reported Candidate Advice & Tips:
+                      Reported Candidate Advice &amp; Tips:
                     </span>
                     <ul className="space-y-1.5 text-xs text-slate-600 pl-4 list-disc leading-relaxed">
                       {activeExp.advice.map((adv, idx) => (
@@ -407,7 +413,7 @@ export const CompanyDetailPage = () => {
               <div className="flex items-center justify-between pt-2">
                 <div>
                   <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-                    Interview Rounds & Preserved Questions
+                    Interview Rounds &amp; Preserved Questions
                   </h2>
                   <p className="text-xs text-slate-500">
                     Click any round to expand questions, problem statements, and constraints.
@@ -443,3 +449,5 @@ export const CompanyDetailPage = () => {
     </div>
   );
 };
+
+export default CompanyDetailPage;
